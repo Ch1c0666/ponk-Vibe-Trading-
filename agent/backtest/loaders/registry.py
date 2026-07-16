@@ -52,6 +52,7 @@ VALID_SOURCES: set[str] = {
     "india_broker",
     "longbridge",
     "local",
+    "astockdata",
     "auto",
 }
 
@@ -99,6 +100,7 @@ def _ensure_registered() -> None:
         "backtest.loaders.india_broker_loader",
         "backtest.loaders.longbridge",
         "backtest.loaders.local_loader",
+        "backtest.loaders.astockdata_loader",
     ]
     import importlib
     for mod in _loader_modules:
@@ -128,7 +130,7 @@ _NO_NETWORK_FALLBACK_SOURCES: frozenset[str] = frozenset({"local", "qveris"})  #
 # that must be politely throttled; Finnhub/AlphaVantage/Tiingo/FMP are key-gated
 # REST fallbacks placed deeper in the chain.
 FALLBACK_CHAINS: dict[str, list[str]] = {
-    "a_share":   ["tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local"],
+    "a_share":   ["tencent", "astockdata", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local"],
     "us_equity": ["yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp", "finnhub", "alphavantage", "longbridge", "akshare", "local"],
     "hk_equity": ["eastmoney", "yahoo", "futu", "yfinance", "akshare", "longbridge", "local"],
     "india_equity": ["yahoo", "yfinance", "india_broker", "local"],

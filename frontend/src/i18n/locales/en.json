@@ -839,6 +839,12 @@
       "count": "{{total}} total, {{shown}} shown",
       "emptyTitle": "No reports yet",
       "emptyDesc": "Report data has not been ingested. Once the brokerage report feed is connected, AI computing research reports will appear here, searchable by title, brokerage, and date."
+    },
+    "detail": {
+      "backToOverview": "Back to AI Compute overview",
+      "subtitle": "Segment research detail page. The standardised research framework is shown below; company names and data will be added in future releases.",
+      "invalidTitle": "Segment not found",
+      "invalidDesc": "\"{{key}}\" is not a recognised AI compute segment. Please select an existing segment from the overview."
     }
   }
 }

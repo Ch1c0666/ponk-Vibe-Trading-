@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useParams } from "react-router-dom";
 import {
+  ArrowLeft,
   Building2,
   Cpu,
   FileText,
@@ -46,6 +48,10 @@ const SEGMENTS: SegmentMeta[] = [
   { key: "glassSubstrate", labelKey: "aiComputing.segments.glassSubstrate" },
 ];
 
+const SEGMENT_MAP = new Map<string, SegmentMeta>(
+  SEGMENTS.map((s) => [s.key, s]),
+);
+
 /** Field labels shown on each overview card — aligned with TEMPLATE_SECTIONS. */
 const OVERVIEW_FIELDS = [
   { icon: Target, labelKey: "aiComputing.template.positioning" },
@@ -56,9 +62,28 @@ const OVERVIEW_FIELDS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Page
+// Page — dispatches between tab-layout and segment-detail based on route
 // ---------------------------------------------------------------------------
 export function AIComputingPower() {
+  const { segmentKey } = useParams<{ segmentKey?: string }>();
+
+  // Detail mode — segmentKey present in the URL
+  if (segmentKey) {
+    const segment = SEGMENT_MAP.get(segmentKey);
+    if (segment) {
+      return <SegmentDetailView segment={segment} />;
+    }
+    return <InvalidSegmentView segmentKey={segmentKey} />;
+  }
+
+  // Tab mode — no segmentKey
+  return <TabLayout />;
+}
+
+// ---------------------------------------------------------------------------
+// Tab layout (exact same as before — extracted to keep detail view clean)
+// ---------------------------------------------------------------------------
+function TabLayout() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
@@ -116,7 +141,81 @@ export function AIComputingPower() {
 }
 
 // ---------------------------------------------------------------------------
-// Overview tab — 8 segment cards with field labels
+// Segment detail view — shown at /ai-computing/:segmentKey
+// ---------------------------------------------------------------------------
+function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="min-h-screen p-6 lg:p-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        {/* Back link */}
+        <Link
+          to="/ai-computing"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t("aiComputing.detail.backToOverview")}
+        </Link>
+
+        {/* Header */}
+        <section className="flex flex-col gap-4 border-b pb-6">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <Cpu className="h-3.5 w-3.5" />
+              {t("aiComputing.badge")}
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {t(segment.labelKey as any)}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {t("aiComputing.detail.subtitle")}
+            </p>
+          </div>
+        </section>
+
+        {/* 6-section research framework */}
+        <SegmentResearchTemplate segment={segment} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Invalid segment view — safe fallback for unknown segmentKey values
+// ---------------------------------------------------------------------------
+function InvalidSegmentView({ segmentKey }: { segmentKey: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="min-h-screen p-6 lg:p-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <Link
+          to="/ai-computing"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t("aiComputing.detail.backToOverview")}
+        </Link>
+
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+            <Search className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="mt-4 text-lg font-medium">
+            {t("aiComputing.detail.invalidTitle")}
+          </h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            {t("aiComputing.detail.invalidDesc", { key: segmentKey })}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Overview tab — 8 segment cards with field labels (clickable → detail page)
 // ---------------------------------------------------------------------------
 function OverviewTab() {
   const { t } = useTranslation();
@@ -128,9 +227,10 @@ function OverviewTab() {
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {SEGMENTS.map((segment) => (
-          <article
+          <Link
             key={segment.key}
-            className="group rounded-lg border bg-card p-5 transition hover:border-primary/40 hover:shadow-sm"
+            to={`/ai-computing/${segment.key}`}
+            className="group rounded-lg border bg-card p-5 transition hover:border-primary/40 hover:shadow-sm block"
           >
             <div className="flex items-center gap-2 mb-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
@@ -153,7 +253,7 @@ function OverviewTab() {
             <p className="text-xs text-muted-foreground/60 italic">
               {t("aiComputing.placeholder")}
             </p>
-          </article>
+          </Link>
         ))}
       </div>
     </div>

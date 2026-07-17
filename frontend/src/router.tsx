@@ -62,6 +62,7 @@ export const router = createBrowserRouter([
       { path: "/alpha-zoo/compare", element: wrap(AlphaZoo) },
       { path: "/alpha-zoo/:alphaId", element: wrap(AlphaZoo) },
       { path: "/ai-computing", element: wrap(AIComputingPower) },
+      { path: "/ai-computing/:segmentKey", element: wrap(AIComputingPower) },
     ],
   },
 ]);

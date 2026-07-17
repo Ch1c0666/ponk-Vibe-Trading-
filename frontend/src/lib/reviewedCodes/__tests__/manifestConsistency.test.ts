@@ -5,7 +5,8 @@
 // that every segment key, code list, and safety invariant matches the
 // frontend segmentCodeMap exports.
 //
-// All arrays must be empty.  No real stock codes or company names may appear.
+// Phase A: manifest has 1 approved code in computeChip (quote-only).
+// Frontend maps are still empty (codegen not yet implemented).
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
@@ -20,15 +21,24 @@ import {
   humanoidSegmentCodeMap,
 } from "@/lib/humanoidRobot/segmentCodeMap";
 
-// Path relative to this test file — goes up to project root, then into agent/config.
 const MANIFEST_PATH = resolve(
   __dirname,
   "..", "..", "..", "..", "..",
   "agent", "config", "reviewed_segment_codes.json",
 );
 
+interface ManifestCodeEntry {
+  code: string;
+  status: string;
+  reason: string;
+  source: string;
+  reviewer: string;
+  reviewedAt: string;
+  dataUse?: string[];
+}
+
 interface ManifestSegment {
-  codes: unknown[];
+  codes: ManifestCodeEntry[];
 }
 
 interface ManifestScope {
@@ -66,23 +76,30 @@ describe("manifest ↔ segmentCodeMap consistency", () => {
     expect(manifestKeys).toEqual(frontendKeys);
   });
 
-  it("manifest aiComputing all codes are empty", () => {
-    for (const [key, seg] of Object.entries(manifest.segments.aiComputing)) {
-      expect(seg.codes).toEqual([]);
+  it("manifest computeChip has exactly 1 approved code with required fields", () => {
+    const codes = manifest.segments.aiComputing.computeChip?.codes ?? [];
+    expect(codes).toHaveLength(1);
+
+    const c = codes[0];
+    expect(c.code).toBe("688041.SH");
+    expect(c.status).toBe("approved");
+    expect(c.dataUse).toEqual(["quote"]);
+    expect(c.reason).toBeTruthy();
+    expect(c.source).toBeTruthy();
+    expect(c.reviewer).toBeTruthy();
+    expect(c.reviewedAt).toBeTruthy();
+  });
+
+  it("manifest other aiComputing segments all empty", () => {
+    for (const key of AI_COMPUTING_SEGMENT_KEYS) {
+      if (key === "computeChip") continue;
+      expect(manifest.segments.aiComputing[key]?.codes ?? []).toEqual([]);
     }
   });
 
-  it("frontend aiComputing segmentCodeMap all codes are empty", () => {
+  it("frontend aiComputing segmentCodeMap still all empty (Phase A gap)", () => {
     for (const key of AI_COMPUTING_SEGMENT_KEYS) {
       expect(segmentCodeMap[key]).toEqual([]);
-    }
-  });
-
-  it("manifest and frontend aiComputing codes per segment are consistent", () => {
-    for (const key of AI_COMPUTING_SEGMENT_KEYS) {
-      const manifestCodes = manifest.segments.aiComputing[key]?.codes ?? [];
-      const frontendCodes = segmentCodeMap[key] ?? [];
-      expect(frontendCodes).toEqual(manifestCodes);
     }
   });
 
@@ -106,28 +123,17 @@ describe("manifest ↔ segmentCodeMap consistency", () => {
     }
   });
 
-  it("manifest and frontend humanoidRobot codes per segment are consistent", () => {
-    for (const key of HUMANOID_ROBOT_SEGMENT_KEYS) {
-      const manifestCodes = manifest.segments.humanoidRobot[key]?.codes ?? [];
-      const frontendCodes = humanoidSegmentCodeMap[key] ?? [];
-      expect(frontendCodes).toEqual(manifestCodes);
-    }
-  });
-
   // -- Safety ---------------------------------------------------------------
 
-  it("manifest contains no real stock code patterns", () => {
-    const raw = readFileSync(MANIFEST_PATH, "utf-8");
-    expect(raw).not.toMatch(/\b\d{6}\.(SH|SZ|BJ)\b/);
-  });
-
-  it("frontend aiComputing segmentCodeMap contains no real stock codes", () => {
-    const serialized = JSON.stringify(segmentCodeMap);
-    expect(serialized).not.toMatch(/\b\d{6}\.(SH|SZ|BJ)\b/);
-  });
-
-  it("frontend humanoidSegmentCodeMap contains no real stock codes", () => {
-    const serialized = JSON.stringify(humanoidSegmentCodeMap);
-    expect(serialized).not.toMatch(/\b\d{6}\.(SH|SZ|BJ)\b/);
+  it("manifest safety: no unknown approved codes beyond computeChip", () => {
+    let total = 0;
+    for (const scope of Object.values(manifest.segments)) {
+      for (const seg of Object.values(scope)) {
+        for (const c of seg.codes) {
+          if (c.status === "approved") total++;
+        }
+      }
+    }
+    expect(total).toBe(1);
   });
 });

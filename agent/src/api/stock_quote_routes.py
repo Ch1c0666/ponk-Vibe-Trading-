@@ -101,6 +101,14 @@ def get_reviewed_stock_codes() -> set[str]:
                 # Non-empty code item must carry mandatory audit fields.
                 if not _has_required_fields(entry, scope_name, segment_key, raw_code):
                     continue
+                # Must be explicitly approved for quote use.
+                data_use = entry.get("dataUse")
+                if not isinstance(data_use, list) or "quote" not in data_use:
+                    logger.warning(
+                        "reviewed_codes: skipping %s in %s/%s — dataUse missing or excludes 'quote'",
+                        raw_code, scope_name, segment_key,
+                    )
+                    continue
                 codes.add(raw_code)
 
     return codes

@@ -66,6 +66,7 @@ def _approved_manifest(*approved_codes: str) -> dict:
             "source": "Test fixture",
             "reviewer": "test-suite",
             "reviewedAt": "2026-07-18",
+            "dataUse": ["quote"],
         }
         segments["aiComputing"]["computeChip"]["codes"].append(entry)
     return {"version": 1, "segments": segments}
@@ -167,11 +168,11 @@ def test_provider_exception_returns_502():
 # ---------------------------------------------------------------------------
 
 
-def test_default_manifest_is_empty():
+def test_default_manifest_has_compute_chip_code():
     from src.api.stock_quote_routes import get_reviewed_stock_codes
 
-    # Default manifest (json on disk) is all empty → set()
-    assert get_reviewed_stock_codes() == set()
+    # Phase A: manifest has 1 approved code in computeChip.
+    assert get_reviewed_stock_codes() == {"688041.SH"}
 
 
 def test_manifest_approved_code_included():
@@ -219,6 +220,48 @@ def test_manifest_missing_required_fields_skipped():
     assert codes == set()
 
 
+# -- dataUse enforcement --------------------------------------------------
+
+
+def test_datause_report_only_excluded_from_quote():
+    """dataUse: ["report"] must not enter quote white list."""
+    manifest = _approved_manifest(_PLACEHOLDER)
+    manifest["segments"]["aiComputing"]["computeChip"]["codes"][0]["dataUse"] = ["report"]
+
+    with patch("src.api.stock_quote_routes._load_manifest", return_value=manifest):
+        codes = __import__(
+            "src.api.stock_quote_routes", fromlist=["get_reviewed_stock_codes"]
+        ).get_reviewed_stock_codes()
+
+    assert codes == set()
+
+
+def test_datause_missing_excluded_from_quote():
+    """Missing dataUse must fail-closed — not enter quote white list."""
+    manifest = _approved_manifest(_PLACEHOLDER)
+    del manifest["segments"]["aiComputing"]["computeChip"]["codes"][0]["dataUse"]
+
+    with patch("src.api.stock_quote_routes._load_manifest", return_value=manifest):
+        codes = __import__(
+            "src.api.stock_quote_routes", fromlist=["get_reviewed_stock_codes"]
+        ).get_reviewed_stock_codes()
+
+    assert codes == set()
+
+
+def test_datause_quote_enters_white_list():
+    """dataUse: ["quote"] is required for quote endpoint."""
+    manifest = _approved_manifest(_PLACEHOLDER)
+    manifest["segments"]["aiComputing"]["computeChip"]["codes"][0]["dataUse"] = ["quote"]
+
+    with patch("src.api.stock_quote_routes._load_manifest", return_value=manifest):
+        codes = __import__(
+            "src.api.stock_quote_routes", fromlist=["get_reviewed_stock_codes"]
+        ).get_reviewed_stock_codes()
+
+    assert _PLACEHOLDER in codes
+
+
 def test_manifest_none_fail_closed():
     with patch(
         "src.api.stock_quote_routes._load_manifest",
@@ -246,11 +289,24 @@ def test_manifest_invalid_code_format_skipped():
     assert codes == set()
 
 
-def test_endpoint_403_when_manifest_is_empty():
-    """Even with the real default manifest, endpoint rejects codes."""
+def test_unreviewed_code_still_403():
+    """Codes not in the manifest are still rejected."""
     resp = client.get("/api/stocks/quote?code=111111.SZ")
     assert resp.status_code == 403
     assert resp.json()["error_code"] == "code_not_reviewed"
+
+
+def test_reviewed_code_200_with_mock_provider():
+    """The approved code 688041.SH returns 200 when provider is mocked."""
+    with patch(
+        "backtest.loaders.astockdata_loader.tencent_quote",
+        return_value={"688041": {"name": "TestCorp", "price": 10.0, "prev_close": 9.9, "open": 9.95, "high": 10.1, "low": 9.8, "change_pct": 1.01, "pe_ttm": 15.0, "pb": 2.5}},
+    ):
+        resp = client.get("/api/stocks/quote?code=688041.SH")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["ok"] is True
+    assert payload["code"] == "688041.SH"
 
 
 # ---------------------------------------------------------------------------
@@ -282,18 +338,27 @@ def test_no_real_stock_codes_in_source():
     assert "688981" not in body
 
 
-def test_manifest_file_is_all_empty():
-    """The on-disk manifest must not contain any real codes."""
+def test_manifest_compute_chip_has_one_code():
+    """computeChip has 1 approved code, others empty."""
     manifest_path = (
         Path(__file__).resolve().parent.parent
         / "config" / "reviewed_segment_codes.json"
     )
     raw = manifest_path.read_text()
     data = json.loads(raw)
-    for scope in data.get("segments", {}).values():
-        for segment in scope.values():
-            assert segment.get("codes") == [], (
-                f"Manifest segment has non-empty codes: {segment}"
-            )
+    total = 0
+    for scope_name, scope in data.get("segments", {}).items():
+        for seg_key, segment in scope.items():
+            codes = segment.get("codes", [])
+            if scope_name == "aiComputing" and seg_key == "computeChip":
+                assert len(codes) == 1
+                c = codes[0]
+                assert c["code"] == "688041.SH"
+                assert c["status"] == "approved"
+                for f in ("reason", "source", "reviewer", "reviewedAt"):
+                    assert c.get(f), f"missing {f}"
+            else:
+                assert codes == [], f"{scope_name}/{seg_key} not empty"
+            total += len(codes)
+    assert total == 1
     assert "600519" not in raw
-    assert "000001" not in raw

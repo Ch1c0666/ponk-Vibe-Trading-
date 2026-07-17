@@ -887,6 +887,21 @@
     "templatesDesc": "Select a segment to view its research framework template. All fields are placeholder state.",
     "structurePlaceholderTitle": "Structure Chart",
     "structurePlaceholderDesc": "Supply chain structure chart coming soon. Visual mapping of upstream-downstream relationships across the humanoid robot industry.",
+    "structureDesc": "Static humanoid robot supply chain structure. Upstream: core components (reducers, lead screws, motors). Midstream: sensing & actuation (sensors, dexterous hands, joint assemblies). Downstream: OEMs & application scenarios. All nodes are placeholder frames; company names and data will be added in future releases.",
+    "structure": {
+      "tierUpstream": "Upstream · Core Components",
+      "tierMidstream": "Midstream · Sensing & Actuation",
+      "tierDownstream": "Downstream · OEM & Applications",
+      "tierLabel": {
+        "upstream": "Upstream",
+        "midstream": "Midstream",
+        "downstream": "Downstream"
+      },
+      "nodeJointAssembly": "Joint Assembly",
+      "nodeRobotOEM": "Robot OEM",
+      "nodeApplication": "Applications"
+    },
+    "reportsDesc": "Humanoid robot supply chain research report library. Filter and sort by segment, brokerage, and date. This is a placeholder shell; report content will be added once data ingestion is wired up.",
     "detail": {
       "backToOverview": "Back to Humanoid Robot overview",
       "subtitle": "Segment research detail page. The standardised research framework is shown below.",

@@ -887,6 +887,21 @@
     "templatesDesc": "选择一个环节查看其研究框架模板。所有字段均为占位状态，待后续版本填充实际数据。",
     "structurePlaceholderTitle": "结构图",
     "structurePlaceholderDesc": "产业链结构图即将上线，敬请期待。届时将以可视化图谱展示人形机器人产业上下游关系。",
+    "structureDesc": "人形机器人产业链静态结构图。上游为减速器/丝杠/电机等核心零部件，中游为传感器/灵巧手/关节总成等感知与执行模块，下游为整机厂与应用场景。所有节点均为空框架占位，公司名称与数据将在后续版本补充。",
+    "structure": {
+      "tierUpstream": "上游 · 核心零部件",
+      "tierMidstream": "中游 · 感知与执行",
+      "tierDownstream": "下游 · 整机与应用",
+      "tierLabel": {
+        "upstream": "上游",
+        "midstream": "中游",
+        "downstream": "下游"
+      },
+      "nodeJointAssembly": "关节总成",
+      "nodeRobotOEM": "整机厂",
+      "nodeApplication": "应用场景"
+    },
+    "reportsDesc": "人形机器人产业链研报库。支持按环节、券商、日期筛选与排序。当前为占位框架，研报内容将在数据接入后补充。",
     "detail": {
       "backToOverview": "返回人形机器人总览",
       "subtitle": "环节研究详情页。以下为标准化研究框架，公司名称与数据将在后续版本补充。",

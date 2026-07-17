@@ -60,12 +60,14 @@ export type ReportLibraryView =
 interface ReportLibraryProps {
   /** Which state to render. Defaults to empty when omitted. */
   view?: ReportLibraryView;
+  /** i18n key for the description paragraph. Defaults to AI computing. */
+  descriptionKey?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function ReportLibrary({ view }: ReportLibraryProps) {
+export function ReportLibrary({ view, descriptionKey }: ReportLibraryProps) {
   const { t } = useTranslation();
   const state: ReportLibraryView = view ?? { kind: "empty" };
 
@@ -73,7 +75,7 @@ export function ReportLibrary({ view }: ReportLibraryProps) {
     <div className="space-y-6">
       {/* Description */}
       <p className="text-sm text-muted-foreground">
-        {t("aiComputing.reportsDesc")}
+        {t((descriptionKey ?? "aiComputing.reportsDesc") as any)}
       </p>
 
       {/* Toolbar — enabled only when data may be available */}

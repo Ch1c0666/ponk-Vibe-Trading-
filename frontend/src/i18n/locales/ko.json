@@ -887,6 +887,21 @@
     "templatesDesc": "세그먼트를 선택하여 연구 프레임워크 템플릿을 확인하세요.",
     "structurePlaceholderTitle": "구조도",
     "structurePlaceholderDesc": "공급망 구조도가 곧 제공될 예정입니다.",
+    "structureDesc": "휴머노이드 로봇 공급망 정적 구조도. 상류: 감속기/리드 스크류/모터 등 핵심 부품. 중류: 센서/민첩한 핸드/관절 어셈블리. 하류: OEM 및 애플리케이션 시나리오. 모든 노드는 플레이스홀더 프레임입니다.",
+    "structure": {
+      "tierUpstream": "상류 · 핵심 부품",
+      "tierMidstream": "중류 · 센싱 및 액추에이션",
+      "tierDownstream": "하류 · OEM 및 애플리케이션",
+      "tierLabel": {
+        "upstream": "상류",
+        "midstream": "중류",
+        "downstream": "하류"
+      },
+      "nodeJointAssembly": "관절 어셈블리",
+      "nodeRobotOEM": "로봇 OEM",
+      "nodeApplication": "애플리케이션"
+    },
+    "reportsDesc": "휴머노이드 로봇 공급망 연구 보고서 라이브러리. 세그먼트, 증권사, 날짜별로 필터링 및 정렬할 수 있습니다. 현재 플레이스홀더 셸입니다.",
     "detail": {
       "backToOverview": "휴머노이드 로봇 개요로 돌아가기",
       "subtitle": "세그먼트 연구 상세 페이지입니다.",

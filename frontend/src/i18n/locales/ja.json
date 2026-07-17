@@ -887,6 +887,21 @@
     "templatesDesc": "セグメントを選択して研究フレームワークテンプレートを表示します。",
     "structurePlaceholderTitle": "構造図",
     "structurePlaceholderDesc": "サプライチェーン構造図は近日公開予定です。",
+    "structureDesc": "人型ロボットのサプライチェーン静的構造図。上流：減速機・リードスクリュー・モーターなどコア部品。中流：センサー・器用なハンド・関節アセンブリ。下流：OEM・アプリケーションシナリオ。すべてのノードはプレースホルダーフレームです。",
+    "structure": {
+      "tierUpstream": "上流 · コア部品",
+      "tierMidstream": "中流 · センシングとアクチュエーション",
+      "tierDownstream": "下流 · OEMとアプリケーション",
+      "tierLabel": {
+        "upstream": "上流",
+        "midstream": "中流",
+        "downstream": "下流"
+      },
+      "nodeJointAssembly": "関節アセンブリ",
+      "nodeRobotOEM": "ロボットOEM",
+      "nodeApplication": "アプリケーション"
+    },
+    "reportsDesc": "人型ロボットサプライチェーンリサーチレポートライブラリ。セグメント、証券会社、日付でフィルタリングとソートが可能です。これはプレースホルダーシェルです。",
     "detail": {
       "backToOverview": "人型ロボット概要に戻る",
       "subtitle": "セグメント研究詳細ページ。以下に標準研究フレームワークを表示します。",

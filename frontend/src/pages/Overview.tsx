@@ -4,7 +4,6 @@ import { LayoutDashboard, RefreshCw, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   loadIndexQuotes,
-  type IndexQuoteServiceMode,
 } from "@/lib/overview/indexQuoteService";
 import {
   toIndexQuoteView,
@@ -13,12 +12,9 @@ import {
 } from "@/lib/overview/indexQuoteAdapter";
 
 // ---------------------------------------------------------------------------
-// Default mode — "disabled" so no network requests happen automatically.
-// The refresh button triggers a one-shot load in the current mode.
-// Switch to "mock" or "real" as needed during development.
+// Default: no auto-load.  The "Load live indices" button explicitly uses
+// real mode via loadIndexQuotes({ mode: "real" }).
 // ---------------------------------------------------------------------------
-
-const DEFAULT_INDEX_MODE: IndexQuoteServiceMode = "disabled";
 
 // Mapping from Tencent index code to i18n label key (kept local — these are
 // well-known benchmark names, not individual stock codes or company names).
@@ -107,9 +103,11 @@ function IndexCard({
 function IndexCardGrid({
   view,
   pendingLabel,
+  sourceLabel,
 }: {
   view: IndexQuoteView;
   pendingLabel: string;
+  sourceLabel: string;
 }) {
   if (view.kind === "disabled") {
     // Show placeholder cards — no data loaded yet
@@ -182,11 +180,17 @@ function IndexCardGrid({
   // data / partial — render real or partial quote rows
   const quotes = view.quotes;
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {quotes.map((q) => (
-        <IndexCard key={q.code} quote={q} pendingLabel={pendingLabel} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {quotes.map((q) => (
+          <IndexCard key={q.code} quote={q} pendingLabel={pendingLabel} />
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground/60">
+        {sourceLabel}: {view.source}
+        {view.timestamp && ` · ${view.timestamp.slice(0, 19).replace("T", " ")}`}
+      </p>
+    </>
   );
 }
 
@@ -276,7 +280,7 @@ export function Overview() {
     setLoading(true);
     setIndexView({ kind: "loading" });
     try {
-      const envelope = await loadIndexQuotes({ mode: DEFAULT_INDEX_MODE });
+      const envelope = await loadIndexQuotes({ mode: "real" });
       setIndexView(toIndexQuoteView(envelope));
     } catch {
       setIndexView({
@@ -310,25 +314,25 @@ export function Overview() {
               </div>
             </div>
 
-            {/* Refresh button — triggers loadIndexQuotes in default mode */}
+            {/* Refresh button — triggers loadIndexQuotes in real mode */}
             <button
               type="button"
               onClick={handleRefresh}
               disabled={loading}
-              aria-label={t("overview.refresh")}
+              aria-label={t("overview.loadLive")}
               className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
             >
               <RefreshCw
                 className={cn("h-3.5 w-3.5", loading && "animate-spin")}
               />
-              {t("overview.refresh")}
+              {loading ? t("overview.indicesPending") : t("overview.loadLive")}
             </button>
           </div>
 
           {/* Partial warning banner */}
           {indexView.kind === "partial" && indexView.warnings.length > 0 && (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
-              {t("overview.mockRefreshed")}
+              {t("overview.partialWarning")}
             </div>
           )}
         </section>
@@ -341,7 +345,11 @@ export function Overview() {
           <IndexCardGrid
             view={indexView}
             pendingLabel={t("overview.indicesPending")}
+            sourceLabel={t("overview.sourceLabel")}
           />
+          <p className="text-[11px] text-muted-foreground/50">
+            {t("overview.disclaimer")}
+          </p>
         </section>
 
         {/* ── A-Share Watchlist ──────────────────────────────────────── */}

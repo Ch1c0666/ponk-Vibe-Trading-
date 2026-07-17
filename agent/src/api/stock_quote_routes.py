@@ -3,32 +3,128 @@
 Mounted by ``agent/api_server.py`` via ``register_stock_quote_routes(app)``.
 
 Exposes ``GET /api/stocks/quote?code=<A-share code>``.  Only codes that have
-passed manual review (segmentCodeMap / humanoidSegmentCodeMap) are served.
-The reviewed-code set is empty by default — every code is rejected with 403
-until the code maps are populated in a future phase.
+passed manual review (recorded in ``agent/config/reviewed_segment_codes.json``)
+are served.  The reviewed-code set is empty by default — every code is rejected
+with 403 until the manifest is populated.
 """
 
 from __future__ import annotations
+
+import json
+import logging
+import re
+from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 
 _ALLOWED_PARAMS = frozenset({"code"})
+_CODE_RE = re.compile(r"^\d{6}\.(SH|SZ|BJ)$")
+
+_MANIFEST_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "config" / "reviewed_segment_codes.json"
+)
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Reviewed-code gate — empty until populated from segmentCodeMap manifests.
-# Phase 2 will load this from a generated JSON or cross-language manifest.
+# Manifest loader — fail-closed on any error.
 # ---------------------------------------------------------------------------
+
+
+def _load_manifest() -> dict[str, Any] | None:
+    """Load and validate the reviewed-code manifest.  Returns None on failure."""
+    try:
+        raw = _MANIFEST_PATH.read_text(encoding="utf-8")
+    except Exception as exc:
+        logger.warning("reviewed_segment_codes.json read failed: %s", exc)
+        return None
+
+    try:
+        manifest = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        logger.warning("reviewed_segment_codes.json invalid JSON: %s", exc)
+        return None
+
+    if not isinstance(manifest, dict):
+        logger.warning("reviewed_segment_codes.json is not a JSON object")
+        return None
+
+    if manifest.get("version") != 1:
+        logger.warning(
+            "reviewed_segment_codes.json unsupported version: %s",
+            manifest.get("version"),
+        )
+        return None
+
+    return manifest
 
 
 def get_reviewed_stock_codes() -> set[str]:
-    """Return the set of manually reviewed A-share codes allowed for quote.
+    """Return the set of manually reviewed & approved A-share codes.
 
-    **Currently always empty.**  No stock code is served until the
-    segmentCodeMap / humanoidSegmentCodeMap manifests are audited and the
-    reviewed set is populated.
+    Reads from ``agent/config/reviewed_segment_codes.json``.  Only codes with
+    ``"status": "approved"`` and valid format are included.  Disabled codes,
+    missing required fields, and invalid entries are silently skipped (logged
+    as warnings).
+
+    On any manifest load failure the returned set is empty — fail-closed.
     """
-    return set()
+    manifest = _load_manifest()
+    if manifest is None:
+        return set()
+
+    codes: set[str] = set()
+    segments = manifest.get("segments")
+    if not isinstance(segments, dict):
+        return set()
+
+    for scope_name, scope in segments.items():
+        if not isinstance(scope, dict):
+            continue
+        for segment_key, segment_data in scope.items():
+            if not isinstance(segment_data, dict):
+                continue
+            for entry in segment_data.get("codes", []):
+                if not isinstance(entry, dict):
+                    continue
+                if entry.get("status") != "approved":
+                    continue
+                raw_code = entry.get("code")
+                if not isinstance(raw_code, str) or not _CODE_RE.match(raw_code):
+                    logger.warning(
+                        "reviewed_codes: skipping invalid code %r in %s/%s",
+                        raw_code, scope_name, segment_key,
+                    )
+                    continue
+                # Non-empty code item must carry mandatory audit fields.
+                if not _has_required_fields(entry, scope_name, segment_key, raw_code):
+                    continue
+                codes.add(raw_code)
+
+    return codes
+
+
+def _has_required_fields(
+    entry: dict[str, Any],
+    scope_name: str,
+    segment_key: str,
+    code: str,
+) -> bool:
+    """Return True if *entry* carries all mandatory audit fields."""
+    missing = []
+    for field in ("reason", "source", "reviewer", "reviewedAt"):
+        val = entry.get(field)
+        if not isinstance(val, str) or not val.strip():
+            missing.append(field)
+    if missing:
+        logger.warning(
+            "reviewed_codes: skipping %s in %s/%s — missing %s",
+            code, scope_name, segment_key, ", ".join(missing),
+        )
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +148,7 @@ def register_stock_quote_routes(app: FastAPI) -> None:
 
         Returns 403 with error_code ``code_not_reviewed`` when the code is
         not in the reviewed set.  The reviewed set is empty by default;
-        codes become available only after segmentCodeMap manual audit.
+        codes become available only after the manifest is audited.
         """
         # Reject unknown query params.
         unknown = set(request.query_params.keys()) - _ALLOWED_PARAMS

@@ -1,0 +1,24 @@
+{
+  "$schema": "./reviewed_segment_codes.schema.json",
+  "version": 1,
+  "segments": {
+    "aiComputing": {
+      "computeChip": { "codes": [] },
+      "hbm": { "codes": [] },
+      "opticalModule": { "codes": [] },
+      "pcb": { "codes": [] },
+      "switchChip": { "codes": [] },
+      "liquidCooling": { "codes": [] },
+      "mlcc": { "codes": [] },
+      "glassSubstrate": { "codes": [] }
+    },
+    "humanoidRobot": {
+      "harmonicReducer": { "codes": [] },
+      "planetaryRollerScrew": { "codes": [] },
+      "framelessTorqueMotor": { "codes": [] },
+      "sixAxisForceSensor": { "codes": [] },
+      "dexterousHand": { "codes": [] },
+      "ballScrew": { "codes": [] }
+    }
+  }
+}

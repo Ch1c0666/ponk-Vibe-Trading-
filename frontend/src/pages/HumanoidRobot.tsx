@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -22,7 +22,13 @@ import {
   SupplyChainStructure,
   type ChainTier,
 } from "@/components/common/SupplyChainStructure";
-import { ReportLibrary } from "@/components/common/ReportLibrary";
+import { ReportLibrary, type ReportLibraryView } from "@/components/common/ReportLibrary";
+import { loadReportLibrary } from "@/lib/aiComputing/reportLibraryService";
+import { toReportLibraryView } from "@/lib/aiComputing/reportLibraryAdapter";
+import {
+  humanoidSegmentCodeMap,
+  type HumanoidRobotSegmentKey,
+} from "@/lib/humanoidRobot/segmentCodeMap";
 
 // ---------------------------------------------------------------------------
 // 6 humanoid robot segments — placeholder only, no real data
@@ -181,9 +187,7 @@ function TabLayout() {
           {activeTab === "overview" && <OverviewTab />}
           {activeSegment && <SegmentTab segment={activeSegment} />}
           {activeTab === "structure" && <StructureTab />}
-          {activeTab === "reports" && (
-            <ReportLibrary descriptionKey="humanoidRobot.reportsDesc" />
-          )}
+          {activeTab === "reports" && <ReportsTab />}
         </section>
       </div>
     </div>
@@ -353,6 +357,76 @@ function SegmentTab({ segment }: { segment: SegmentMeta }) {
   return (
     <div className="space-y-6">
       <SegmentResearchTemplate segment={segment} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Reports tab — segment selector + real-mode service via humanoidSegmentCodeMap
+// ---------------------------------------------------------------------------
+function ReportsTab() {
+  const { t } = useTranslation();
+  const [selectedKey, setSelectedKey] = useState<HumanoidRobotSegmentKey>("harmonicReducer");
+  const [view, setView] = useState<ReportLibraryView>({ kind: "empty" });
+
+  useEffect(() => {
+    let cancelled = false;
+    const codes = humanoidSegmentCodeMap[selectedKey] ?? [];
+
+    loadReportLibrary(
+      { codes: [...codes], segmentKey: selectedKey },
+      { mode: "real" },
+    ).then((envelope) => {
+      if (!cancelled) setView(toReportLibraryView(envelope));
+    }).catch(() => {
+      if (!cancelled)
+        setView({ kind: "error", errorCode: "client_error", message: "Failed to load reports." });
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedKey]);
+
+  const codes = humanoidSegmentCodeMap[selectedKey] ?? [];
+  const hasCodes = codes.length > 0;
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        {t("humanoidRobot.reportsDesc")}
+      </p>
+
+      {/* Stock-level aggregation notice */}
+      <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+        {t("humanoidRobot.reports.aggregationNotice")}
+      </div>
+
+      {/* Code list audit status */}
+      {!hasCodes && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">
+          {t("humanoidRobot.reports.codesPendingReview")}
+        </div>
+      )}
+
+      {/* Segment picker */}
+      <div className="flex flex-wrap gap-2">
+        {SEGMENTS.map((segment) => (
+          <button
+            key={segment.key}
+            type="button"
+            onClick={() => setSelectedKey(segment.key as HumanoidRobotSegmentKey)}
+            className={cn(
+              "rounded-md border px-3 py-1.5 text-sm transition-colors",
+              selectedKey === (segment.key as HumanoidRobotSegmentKey)
+                ? "border-primary bg-primary/10 text-primary font-medium"
+                : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+            )}
+          >
+            {t(segment.labelKey as any)}
+          </button>
+        ))}
+      </div>
+
+      <ReportLibrary view={view} descriptionKey="humanoidRobot.reportsDesc" />
     </div>
   );
 }

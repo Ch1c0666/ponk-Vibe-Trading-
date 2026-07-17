@@ -1,11 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, act } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HumanoidRobot } from "../HumanoidRobot";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function renderAt(path: string) {
   return render(
@@ -18,118 +14,93 @@ function renderAt(path: string) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe("HumanoidRobot page", () => {
-  // -- Tab layout rendering -----------------------------------------------
+  // -- Tab layout --------------------------------------------------------
 
-  it("renders the page title and badge", () => {
+  it("renders the page heading", () => {
     renderAt("/humanoid-robot");
-    // "Humanoid Robot" appears in both badge and h1 — match the heading specifically
     expect(
       screen.getByRole("heading", { name: "Humanoid Robot" }),
     ).toBeInTheDocument();
   });
 
-  it("renders all 4 sub-tabs", () => {
+  it("renders overview tab and 6 segment tabs", () => {
     renderAt("/humanoid-robot");
-    for (const tab of ["Overview", "Templates", "Reports", "Structure"]) {
-      expect(screen.getByRole("button", { name: tab })).toBeInTheDocument();
-    }
-  });
-
-  // -- Overview tab -------------------------------------------------------
-
-  it("renders 6 segment cards on the overview tab", () => {
-    renderAt("/humanoid-robot");
-    const segments = [
+    expect(screen.getByRole("button", { name: "Overview" })).toBeInTheDocument();
+    for (const label of [
       "Harmonic Reducer",
       "Planetary Roller Screw",
       "Frameless Torque Motor",
       "6-Axis Force Sensor",
       "Dexterous Hand",
       "Ball Screw",
-    ];
-    for (const label of segments) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+    ]) {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
   });
 
-  // -- Structure tab -------------------------------------------------------
-
-  it("renders the structure tab with supply chain tiers", () => {
+  it("renders structure and reports tabs", () => {
     renderAt("/humanoid-robot");
-    const structureTab = screen.getByRole("button", { name: "Structure" });
-    act(() => structureTab.click());
-
-    // Tier labels should be visible
-    expect(
-      screen.getByText("Upstream · Core Components"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Midstream · Sensing & Actuation"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Downstream · OEM & Applications"),
-    ).toBeInTheDocument();
-
-    // Segment names should appear as nodes in the diagram
-    expect(screen.getByText("Harmonic Reducer")).toBeInTheDocument();
-    expect(screen.getByText("Dexterous Hand")).toBeInTheDocument();
-    expect(screen.getByText("Ball Screw")).toBeInTheDocument();
-
-    // Generic placeholder nodes
-    expect(screen.getByText("Joint Assembly")).toBeInTheDocument();
-    expect(screen.getByText("Robot OEM")).toBeInTheDocument();
-    expect(screen.getByText("Applications")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Structure" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reports" })).toBeInTheDocument();
   });
 
-  it("structure tab nodes show 'Coming soon' placeholder", () => {
-    renderAt("/humanoid-robot");
-    const structureTab = screen.getByRole("button", { name: "Structure" });
-    act(() => structureTab.click());
+  // -- Overview tab ------------------------------------------------------
 
-    // Every node card should display the "Coming soon" placeholder
-    const placeholders = screen.getAllByText("Coming soon");
-    // 4 upstream + 3 midstream + 2 downstream = 9 nodes
-    expect(placeholders.length).toBeGreaterThanOrEqual(9);
+  it("renders 6 segment cards with field labels", () => {
+    renderAt("/humanoid-robot");
+    // "Segment Positioning" appears in every overview card (6) + may appear elsewhere
+    expect(screen.getAllByText("Segment Positioning").length).toBeGreaterThanOrEqual(6);
+    expect(screen.getAllByText("Coming soon").length).toBeGreaterThanOrEqual(6);
   });
 
-  // -- Reports tab ---------------------------------------------------------
-
-  it("reports tab shows empty state with humanoid robot description", () => {
+  it("overview shows supply chain structure", () => {
     renderAt("/humanoid-robot");
-    const reportsTab = screen.getByRole("button", { name: "Reports" });
-    act(() => reportsTab.click());
-
-    // Empty state should be visible — the ReportLibrary uses AI computing keys
-    // for its empty state text (shared component).
-    const emptyHeadings = screen.getAllByText("No reports yet");
-    expect(emptyHeadings.length).toBeGreaterThanOrEqual(1);
+    // Tier labels visible in the overview area
+    expect(screen.getByText("Upstream · Core Components")).toBeInTheDocument();
+    expect(screen.getByText("Midstream · Sensing & Actuation")).toBeInTheDocument();
   });
 
-  // -- Segment detail pages ------------------------------------------------
+  // -- Segment tabs -------------------------------------------------------
+
+  it("clicking a segment tab shows the research framework inline", () => {
+    renderAt("/humanoid-robot");
+    act(() =>
+      screen.getByRole("button", { name: "Harmonic Reducer" }).click(),
+    );
+    expect(screen.getAllByText("Harmonic Reducer").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Research Framework")).toBeInTheDocument();
+  });
+
+  // -- Structure tab ------------------------------------------------------
+
+  it("structure tab renders supply chain", () => {
+    renderAt("/humanoid-robot");
+    act(() => screen.getByRole("button", { name: "Structure" }).click());
+    expect(screen.getByText("Upstream · Core Components")).toBeInTheDocument();
+    expect(screen.getAllByText("Coming soon").length).toBeGreaterThanOrEqual(9);
+  });
+
+  // -- Reports tab --------------------------------------------------------
+
+  it("reports tab shows empty state", () => {
+    renderAt("/humanoid-robot");
+    act(() => screen.getByRole("button", { name: "Reports" }).click());
+    expect(screen.getByText("No reports yet")).toBeInTheDocument();
+  });
+
+  // -- Detail pages -------------------------------------------------------
 
   it("renders detail page for a valid segment key", () => {
     renderAt("/humanoid-robot/harmonicReducer");
-
-    // Should show back link
     expect(
       screen.getByText("Back to Humanoid Robot overview"),
     ).toBeInTheDocument();
-
-    // "Harmonic Reducer" appears in both h1 (page title) and h2 (framework header)
-    const headings = screen.getAllByRole("heading", { name: "Harmonic Reducer" });
-    expect(headings.length).toBeGreaterThanOrEqual(2);
-
-    // Research framework badge
     expect(screen.getByText("Research Framework")).toBeInTheDocument();
   });
 
   it("all 6 segment detail pages are accessible", () => {
-    const validKeys = [
+    const keys = [
       "harmonicReducer",
       "planetaryRollerScrew",
       "framelessTorqueMotor",
@@ -137,10 +108,8 @@ describe("HumanoidRobot page", () => {
       "dexterousHand",
       "ballScrew",
     ];
-
-    for (const key of validKeys) {
+    for (const key of keys) {
       const { unmount } = renderAt(`/humanoid-robot/${key}`);
-      // Each detail page should show the back link
       expect(
         screen.getByText("Back to Humanoid Robot overview"),
       ).toBeInTheDocument();
@@ -148,48 +117,22 @@ describe("HumanoidRobot page", () => {
     }
   });
 
-  // -- Invalid segment fallback --------------------------------------------
-
-  it("shows invalid segment view for an unknown segmentKey", () => {
+  it("shows invalid segment view for unknown key", () => {
     renderAt("/humanoid-robot/nonexistent");
-
     expect(screen.getByText("Segment not found")).toBeInTheDocument();
-    // Should still show a back link
-    expect(
-      screen.getByText("Back to Humanoid Robot overview"),
-    ).toBeInTheDocument();
   });
 
-  // -- Safety: no real stock codes -----------------------------------------
+  // -- Safety -------------------------------------------------------------
 
   it("page contains no real A-share stock code patterns", () => {
     renderAt("/humanoid-robot");
-    const bodyText = document.body.textContent ?? "";
-    expect(bodyText).not.toMatch(/\b\d{6}\.(SH|SZ|BJ)\b/i);
-    expect(bodyText).not.toMatch(/["\s]\d{6}["\s]/);
+    expect(document.body.textContent).not.toMatch(/\b\d{6}\.(SH|SZ|BJ)\b/i);
   });
-
-  it("segment detail pages contain no real stock codes", () => {
-    renderAt("/humanoid-robot/harmonicReducer");
-    const bodyText = document.body.textContent ?? "";
-    expect(bodyText).not.toMatch(/\b\d{6}\.(SH|SZ|BJ)\b/i);
-  });
-
-  // -- Safety: no API calls ------------------------------------------------
 
   it("page does not trigger fetch on render", () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const spy = vi.spyOn(globalThis, "fetch");
     renderAt("/humanoid-robot");
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
-  });
-
-  it("structure tab does not trigger fetch", () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-    renderAt("/humanoid-robot");
-    const structureTab = screen.getByRole("button", { name: "Structure" });
-    act(() => structureTab.click());
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

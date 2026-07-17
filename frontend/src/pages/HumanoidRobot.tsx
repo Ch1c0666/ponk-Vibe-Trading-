@@ -8,7 +8,6 @@ import {
   FileText,
   GitBranch,
   Globe,
-  LayoutTemplate,
   Search,
   Shield,
   Star,
@@ -26,18 +25,6 @@ import {
 import { ReportLibrary } from "@/components/common/ReportLibrary";
 
 // ---------------------------------------------------------------------------
-// Sub-tab definitions
-// ---------------------------------------------------------------------------
-const TABS = [
-  { key: "overview", icon: Search, labelKey: "humanoidRobot.tabs.overview" },
-  { key: "templates", icon: LayoutTemplate, labelKey: "humanoidRobot.tabs.templates" },
-  { key: "reports", icon: FileText, labelKey: "humanoidRobot.tabs.reports" },
-  { key: "structure", icon: GitBranch, labelKey: "humanoidRobot.tabs.structure" },
-] as const;
-
-type TabKey = (typeof TABS)[number]["key"];
-
-// ---------------------------------------------------------------------------
 // 6 humanoid robot segments — placeholder only, no real data
 // ---------------------------------------------------------------------------
 const SEGMENTS: SegmentMeta[] = [
@@ -53,6 +40,9 @@ const SEGMENT_MAP = new Map<string, SegmentMeta>(
   SEGMENTS.map((s) => [s.key, s]),
 );
 
+// Top-level tab keys: 总览 + 6 segments + 结构图 + 研报库
+type TabKey = "overview" | (typeof SEGMENTS)[number]["key"] | "structure" | "reports";
+
 /** Field labels shown on each overview card. */
 const OVERVIEW_FIELDS = [
   { icon: Target, labelKey: "humanoidRobot.template.positioning" },
@@ -63,7 +53,7 @@ const OVERVIEW_FIELDS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Humanoid robot supply chain — static 3-tier placeholder, no real company data
+// Humanoid robot supply chain — static 3-tier placeholder, no real data
 // ---------------------------------------------------------------------------
 const HUMANOID_CHAIN: ChainTier[] = [
   {
@@ -104,7 +94,6 @@ const HUMANOID_CHAIN: ChainTier[] = [
 export function HumanoidRobot() {
   const { segmentKey } = useParams<{ segmentKey?: string }>();
 
-  // Detail mode — segmentKey present in the URL
   if (segmentKey) {
     const segment = SEGMENT_MAP.get(segmentKey);
     if (segment) {
@@ -113,16 +102,20 @@ export function HumanoidRobot() {
     return <InvalidSegmentView segmentKey={segmentKey} />;
   }
 
-  // Tab mode — no segmentKey
   return <TabLayout />;
 }
 
 // ---------------------------------------------------------------------------
-// Tab layout — 4 sub-tabs: 总览 / 研究模板 / 研报库 / 结构图
+// Tab layout — 总览 + 6 segments + 结构图 + 研报库
 // ---------------------------------------------------------------------------
 function TabLayout() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
+
+  const activeSegment =
+    activeTab !== "overview" && activeTab !== "structure" && activeTab !== "reports"
+      ? SEGMENTS.find((s) => s.key === activeTab) ?? null
+      : null;
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
@@ -145,37 +138,84 @@ function TabLayout() {
           </div>
         </section>
 
-        {/* ---- Sub-tabs ---- */}
+        {/* ---- Tab bar: 总览 + 6 segments + 结构图 + 研报库 ---- */}
         <nav className="flex flex-wrap gap-1 rounded-lg border bg-muted/40 p-1">
-          {TABS.map(({ key, icon: Icon, labelKey }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveTab(key)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors",
-                activeTab === key
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+          {/* 总览 */}
+          <TabButton
+            active={activeTab === "overview"}
+            onClick={() => setActiveTab("overview")}
+          >
+            <Search className="h-4 w-4" />
+            {t("humanoidRobot.tabs.overview")}
+          </TabButton>
+          {/* 6 segments */}
+          {SEGMENTS.map((seg) => (
+            <TabButton
+              key={seg.key}
+              active={activeTab === seg.key}
+              onClick={() => setActiveTab(seg.key)}
             >
-              <Icon className="h-4 w-4" />
-              {t(labelKey)}
-            </button>
+              {t(seg.labelKey as any)}
+            </TabButton>
           ))}
+          {/* Structure */}
+          <TabButton
+            active={activeTab === "structure"}
+            onClick={() => setActiveTab("structure")}
+          >
+            <GitBranch className="h-4 w-4" />
+            {t("humanoidRobot.tabs.structure")}
+          </TabButton>
+          {/* Reports */}
+          <TabButton
+            active={activeTab === "reports"}
+            onClick={() => setActiveTab("reports")}
+          >
+            <FileText className="h-4 w-4" />
+            {t("humanoidRobot.tabs.reports")}
+          </TabButton>
         </nav>
 
         {/* ---- Tab content ---- */}
         <section className="min-h-[50vh]">
           {activeTab === "overview" && <OverviewTab />}
-          {activeTab === "templates" && <TemplatesTab />}
+          {activeSegment && <SegmentTab segment={activeSegment} />}
+          {activeTab === "structure" && <StructureTab />}
           {activeTab === "reports" && (
             <ReportLibrary descriptionKey="humanoidRobot.reportsDesc" />
           )}
-          {activeTab === "structure" && <StructureTab />}
         </section>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tiny tab button
+// ---------------------------------------------------------------------------
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -188,7 +228,6 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
   return (
     <div className="min-h-screen p-6 lg:p-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        {/* Back link */}
         <Link
           to="/humanoid-robot"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
@@ -197,7 +236,6 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
           {t("humanoidRobot.detail.backToOverview")}
         </Link>
 
-        {/* Header */}
         <section className="flex flex-col gap-4 border-b pb-6">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground">
@@ -213,7 +251,6 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
           </div>
         </section>
 
-        {/* 6-section research framework */}
         <SegmentResearchTemplate segment={segment} />
       </div>
     </div>
@@ -221,7 +258,7 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
 }
 
 // ---------------------------------------------------------------------------
-// Invalid segment view — safe fallback for unknown segmentKey values
+// Invalid segment view
 // ---------------------------------------------------------------------------
 function InvalidSegmentView({ segmentKey }: { segmentKey: string }) {
   const { t } = useTranslation();
@@ -254,7 +291,7 @@ function InvalidSegmentView({ segmentKey }: { segmentKey: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Overview tab — 6 segment cards in a clickable grid (link to detail pages)
+// Overview tab — 6 segment cards with field labels, clickable to detail
 // ---------------------------------------------------------------------------
 function OverviewTab() {
   const { t } = useTranslation();
@@ -264,6 +301,15 @@ function OverviewTab() {
       <p className="text-sm text-muted-foreground">
         {t("humanoidRobot.overviewDesc")}
       </p>
+
+      {/* Structure diagram in overview area */}
+      <SupplyChainStructure
+        tiers={HUMANOID_CHAIN}
+        descriptionKey="humanoidRobot.structureDesc"
+        placeholderKey="humanoidRobot.placeholder"
+      />
+
+      {/* Segment cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {SEGMENTS.map((segment) => (
           <Link
@@ -279,7 +325,6 @@ function OverviewTab() {
                 {t(segment.labelKey as any)}
               </h3>
             </div>
-            {/* Field labels aligned with template sections */}
             <ul className="space-y-1.5 mb-3">
               {OVERVIEW_FIELDS.map(({ icon: Icon, labelKey }) => (
                 <li
@@ -302,47 +347,18 @@ function OverviewTab() {
 }
 
 // ---------------------------------------------------------------------------
-// Templates tab — segment selector + full research framework
+// Segment tab — shows the research framework for a single segment inline
 // ---------------------------------------------------------------------------
-function TemplatesTab() {
-  const { t } = useTranslation();
-  const [selectedKey, setSelectedKey] = useState(SEGMENTS[0].key);
-
-  const active = SEGMENTS.find((s) => s.key === selectedKey) ?? SEGMENTS[0];
-
+function SegmentTab({ segment }: { segment: SegmentMeta }) {
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        {t("humanoidRobot.templatesDesc")}
-      </p>
-
-      {/* Segment picker */}
-      <div className="flex flex-wrap gap-2">
-        {SEGMENTS.map((segment) => (
-          <button
-            key={segment.key}
-            type="button"
-            onClick={() => setSelectedKey(segment.key)}
-            className={cn(
-              "rounded-md border px-3 py-1.5 text-sm transition-colors",
-              selectedKey === segment.key
-                ? "border-primary bg-primary/10 text-primary font-medium"
-                : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
-            )}
-          >
-            {t(segment.labelKey as any)}
-          </button>
-        ))}
-      </div>
-
-      {/* Reusable template for the active segment */}
-      <SegmentResearchTemplate segment={active} />
+      <SegmentResearchTemplate segment={segment} />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Structure tab — static humanoid robot supply chain diagram
+// Structure tab — static supply chain diagram
 // ---------------------------------------------------------------------------
 function StructureTab() {
   return (

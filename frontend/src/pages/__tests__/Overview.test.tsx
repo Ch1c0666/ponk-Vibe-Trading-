@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Overview } from "../Overview";
 
@@ -15,6 +15,18 @@ function renderOverview() {
   );
 }
 
+// Mock the service so no real network calls happen.
+const mockLoadIndexQuotes = vi.fn();
+
+vi.mock("@/lib/overview/indexQuoteService", () => ({
+  loadIndexQuotes: (...args: unknown[]) => mockLoadIndexQuotes(...args),
+  INDEX_CODE_ALLOWLIST: ["sh000001", "sz399001", "sz399006", "sh000688"],
+}));
+
+beforeEach(() => {
+  mockLoadIndexQuotes.mockReset();
+});
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -24,10 +36,7 @@ describe("Overview page", () => {
 
   it("renders the page title and badge", () => {
     renderOverview();
-    // "Overview" appears in both badge pill and h1 heading — match the heading specifically
-    expect(
-      screen.getByRole("heading", { name: "Overview" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
   });
 
   it("renders the index cards section heading", () => {
@@ -35,7 +44,7 @@ describe("Overview page", () => {
     expect(screen.getByText("Index Quotes")).toBeInTheDocument();
   });
 
-  it("renders 4 index cards", () => {
+  it("renders 4 index cards in disabled state by default", () => {
     renderOverview();
     const cards = [
       "SSE Composite",
@@ -48,60 +57,100 @@ describe("Overview page", () => {
     }
   });
 
-  // -- Mock-only index cards ----------------------------------------------
+  // -- Disabled state --------------------------------------------------------
 
-  it("all index cards show pending placeholder value", () => {
+  it("default mode does not trigger any network request on mount", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     renderOverview();
-    // Each card renders "—" for price and "Pending" for status.
-    // With 4 cards × "—" price + 4 "Pending" labels.
-    const dashes = screen.getAllByText("—");
-    expect(dashes.length).toBeGreaterThanOrEqual(4);
-    const pendingLabels = screen.getAllByText("Pending");
-    expect(pendingLabels).toHaveLength(4);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 
-  it("index cards contain no numeric price values", () => {
+  // -- Refresh button -------------------------------------------------------
+
+  it("refresh button exists", () => {
     renderOverview();
-    // The price area shows "—", never a real number like 3,000+.
-    const cards = screen.getAllByText("—");
-    // Sanity: no element renders a large numeric string that looks like a real index level
-    const bodyText = document.body.textContent ?? "";
-    // Should not contain a number ≥ 1000 with comma or decimal formatting
-    expect(bodyText).not.toMatch(/\b[1-9]\d{2,}(?:[.,]\d+)?\b/);
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeEnabled();
   });
 
-  // -- A-Share watchlist --------------------------------------------------
+  it("refresh calls loadIndexQuotes and renders data state", async () => {
+    mockLoadIndexQuotes.mockResolvedValueOnce({
+      ok: true,
+      source: "tencent",
+      timestamp: "2026-07-18T10:00:00Z",
+      data: {
+        quotes: [
+          { code: "sh000001", name: "SSE Composite", price: 3500.0, prev_close: 3480.0, open: 3475.0, high: 3510.0, low: 3460.0, change_pct: 0.57 },
+          { code: "sz399001", name: "SZSE Component", price: 10800.0, prev_close: 10750.0, open: 10760.0, high: 10850.0, low: 10700.0, change_pct: -0.15 },
+          { code: "sz399006", name: "ChiNext", price: 2150.0, prev_close: 2130.0, open: 2135.0, high: 2160.0, low: 2120.0, change_pct: 1.2 },
+          { code: "sh000688", name: "STAR 50", price: 980.0, prev_close: 985.0, open: 983.0, high: 990.0, low: 975.0, change_pct: -0.8 },
+        ],
+        partial: false,
+        warnings: [],
+      },
+    });
 
-  it("renders A-share watchlist section", () => {
     renderOverview();
-    expect(
-      screen.getByText("A-Share Watchlist"),
-    ).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: "Refresh" });
+    await act(() => fireEvent.click(btn));
+
+    // Prices should render (not — dashes anymore)
+    expect(screen.getByText("3500.00")).toBeInTheDocument();
+    expect(screen.getByText("+0.57%")).toBeInTheDocument();
+    expect(screen.getByText("-0.15%")).toBeInTheDocument();
   });
 
-  it("A-share watchlist is empty", () => {
+  it("refresh handles partial response", async () => {
+    mockLoadIndexQuotes.mockResolvedValueOnce({
+      ok: true,
+      source: "tencent",
+      timestamp: "2026-07-18T10:00:00Z",
+      data: {
+        quotes: [
+          { code: "sh000001", name: "SSE Composite", price: 3500.0, prev_close: null, open: null, high: null, low: null, change_pct: 0.5 },
+          { code: "sz399001", name: "SZSE Component", price: null, prev_close: null, open: null, high: null, low: null, change_pct: null },
+          { code: "sz399006", name: "ChiNext", price: null, prev_close: null, open: null, high: null, low: null, change_pct: null },
+          { code: "sh000688", name: "STAR 50", price: null, prev_close: null, open: null, high: null, low: null, change_pct: null },
+        ],
+        partial: true,
+        warnings: [{ code: "provider_quote_failed", message: "failed", index_code: "sz399001" }],
+      },
+    });
+
     renderOverview();
-    // "No watchlist entries" appears in each watchlist table.
-    const emptyRows = screen.getAllByText("No watchlist entries");
-    expect(emptyRows.length).toBeGreaterThanOrEqual(1);
+    const btn = screen.getByRole("button", { name: "Refresh" });
+    await act(() => fireEvent.click(btn));
+
+    // Partial banner should appear
+    expect(screen.getByText("(Mock) Refresh complete — no live data requested")).toBeInTheDocument();
+    // The successful quote still renders
+    expect(screen.getByText("3500.00")).toBeInTheDocument();
   });
 
-  // -- US Stock watchlist -------------------------------------------------
+  it("refresh handles error response gracefully", async () => {
+    mockLoadIndexQuotes.mockResolvedValueOnce({
+      ok: false,
+      error: "all failed",
+      error_code: "provider_request_failed",
+    });
 
-  it("renders US stock watchlist section", () => {
     renderOverview();
-    expect(
-      screen.getByText("US Stock Watchlist"),
-    ).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: "Refresh" });
+    await act(() => fireEvent.click(btn));
+
+    // Should still render the card grid (in error state), no crash
+    expect(screen.getByText("SSE Composite")).toBeInTheDocument();
+    // Error message shown in cards
+    expect(screen.getAllByText("all failed").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("US stock watchlist is empty", () => {
-    renderOverview();
-    const emptyRows = screen.getAllByText("No watchlist entries");
-    expect(emptyRows).toHaveLength(2);
-  });
+  // -- Watchlists ---------------------------------------------------------
 
-  // -- Add button disabled ------------------------------------------------
+  it("renders A-share and US stock watchlist sections", () => {
+    renderOverview();
+    expect(screen.getByText("A-Share Watchlist")).toBeInTheDocument();
+    expect(screen.getByText("US Stock Watchlist")).toBeInTheDocument();
+  });
 
   it("add buttons are disabled", () => {
     renderOverview();
@@ -112,55 +161,24 @@ describe("Overview page", () => {
     }
   });
 
-  // -- Refresh button -----------------------------------------------------
-
-  it("refresh button exists and shows mock feedback on click", () => {
+  it("watchlist tables are empty", () => {
     renderOverview();
-    const refreshBtn = screen.getByRole("button", { name: "Refresh" });
-    expect(refreshBtn).toBeEnabled();
-
-    // Before click: no mock banner
-    expect(
-      screen.queryByText("(Mock) Refresh complete — no live data requested"),
-    ).not.toBeInTheDocument();
-
-    // Click refresh
-    fireEvent.click(refreshBtn);
-
-    // After click: mock banner appears
-    expect(
-      screen.getByText("(Mock) Refresh complete — no live data requested"),
-    ).toBeInTheDocument();
+    const emptyRows = screen.getAllByText("No watchlist entries");
+    expect(emptyRows).toHaveLength(2);
   });
 
-  it("refresh does not trigger any network request", () => {
-    // Spy on fetch to ensure it is never called
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-    renderOverview();
-
-    const refreshBtn = screen.getByRole("button", { name: "Refresh" });
-    fireEvent.click(refreshBtn);
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
-  });
-
-  // -- No real stock codes ------------------------------------------------
+  // -- Safety — no real stock codes ----------------------------------------
 
   it("page contains no real A-share stock code patterns", () => {
     renderOverview();
     const bodyText = document.body.textContent ?? "";
-    // No <6-digit>.<SH|SZ|BJ> patterns
     expect(bodyText).not.toMatch(/\b\d{6}\.(SH|SZ|BJ)\b/i);
-    // No bare 6-digit codes that look like A-share codes
     expect(bodyText).not.toMatch(/["\s]\d{6}["\s]/);
   });
 
   it("page contains no real US stock ticker patterns", () => {
     renderOverview();
     const bodyText = document.body.textContent ?? "";
-    // No typical uppercase placeholder that looks like a live ticker
-    // near quote data (e.g. generic short-code placeholder near a price dash).
     expect(bodyText).not.toMatch(/\b[A-Z]{1,5}\s+—\b/);
   });
 
@@ -169,7 +187,6 @@ describe("Overview page", () => {
   it("renders watchlist table column headers", () => {
     renderOverview();
     for (const header of ["Code", "Name", "Price", "Change", "Actions"]) {
-      // There are 2 tables, so each header appears twice.
       const elements = screen.getAllByText(header);
       expect(elements.length).toBe(2);
     }

@@ -2,26 +2,32 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { LayoutDashboard, RefreshCw, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  loadIndexQuotes,
+  type IndexQuoteServiceMode,
+} from "@/lib/overview/indexQuoteService";
+import {
+  toIndexQuoteView,
+  type IndexQuoteRow,
+  type IndexQuoteView,
+} from "@/lib/overview/indexQuoteAdapter";
 
 // ---------------------------------------------------------------------------
-// Mock-only index config — labels are well-known market benchmarks, not
-// individual stock codes or company names.  All values are "—" / pending.
+// Default mode — "disabled" so no network requests happen automatically.
+// The refresh button triggers a one-shot load in the current mode.
+// Switch to "mock" or "real" as needed during development.
 // ---------------------------------------------------------------------------
 
-type MockIndexKey = "shanghai" | "shenzhen" | "chinext" | "star50";
+const DEFAULT_INDEX_MODE: IndexQuoteServiceMode = "disabled";
 
-interface MockIndexMeta {
-  key: MockIndexKey;
-  /** i18n key for the index label, e.g. "overview.indices.shanghai" */
-  labelKey: string;
-}
-
-const MOCK_INDICES: readonly MockIndexMeta[] = [
-  { key: "shanghai", labelKey: "overview.indices.shanghai" },
-  { key: "shenzhen", labelKey: "overview.indices.shenzhen" },
-  { key: "chinext", labelKey: "overview.indices.chinext" },
-  { key: "star50", labelKey: "overview.indices.star50" },
-] as const;
+// Mapping from Tencent index code to i18n label key (kept local — these are
+// well-known benchmark names, not individual stock codes or company names).
+const INDEX_LABEL_MAP: Record<string, string> = {
+  sh000001: "overview.indices.shanghai",
+  sz399001: "overview.indices.shenzhen",
+  sz399006: "overview.indices.chinext",
+  sh000688: "overview.indices.star50",
+};
 
 // ---------------------------------------------------------------------------
 // Watchlist table column keys
@@ -36,36 +42,57 @@ const WATCHLIST_COLS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Index Card (inline — extractable to common/ later)
+// Index Card
 // ---------------------------------------------------------------------------
 
 function IndexCard({
-  labelKey,
+  quote,
   pendingLabel,
-  muted,
 }: {
-  labelKey: string;
+  quote: IndexQuoteRow;
   pendingLabel: string;
-  muted?: boolean;
 }) {
   const { t } = useTranslation();
+  const labelKey = INDEX_LABEL_MAP[quote.code] ?? quote.code;
+  const hasData = quote.price !== null;
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 rounded-lg border bg-card p-4 text-card-foreground shadow-sm",
-        muted && "opacity-60",
-      )}
-    >
+    <div className="flex flex-col gap-2 rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
       <span className="text-xs font-medium text-muted-foreground">
         {t(labelKey as any)}
       </span>
-      <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-semibold tabular-nums text-muted-foreground/50">
-          —
-        </span>
-        <span className="text-xs text-muted-foreground/50">—</span>
-      </div>
+
+      {hasData ? (
+        <>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-semibold tabular-nums">
+              {quote.price!.toFixed(2)}
+            </span>
+            <span
+              className={cn(
+                "text-xs font-medium tabular-nums",
+                (quote.change_pct ?? 0) >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400",
+              )}
+            >
+              {quote.change_pct !== null
+                ? `${quote.change_pct >= 0 ? "+" : ""}${quote.change_pct.toFixed(2)}%`
+                : "—"}
+            </span>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-semibold tabular-nums text-muted-foreground/50">
+              —
+            </span>
+            <span className="text-xs text-muted-foreground/50">—</span>
+          </div>
+        </>
+      )}
+
       <span className="text-[11px] text-muted-foreground/60">
         {pendingLabel}
       </span>
@@ -74,7 +101,97 @@ function IndexCard({
 }
 
 // ---------------------------------------------------------------------------
-// Watchlist Table (inline — extractable to common/ later)
+// Index card grid — consumes IndexQuoteView
+// ---------------------------------------------------------------------------
+
+function IndexCardGrid({
+  view,
+  pendingLabel,
+}: {
+  view: IndexQuoteView;
+  pendingLabel: string;
+}) {
+  if (view.kind === "disabled") {
+    // Show placeholder cards — no data loaded yet
+    const codes = Object.keys(INDEX_LABEL_MAP);
+    return (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {codes.map((code) => (
+          <IndexCard
+            key={code}
+            quote={{
+              code,
+              name: "",
+              price: null,
+              prev_close: null,
+              open: null,
+              high: null,
+              low: null,
+              change_pct: null,
+            }}
+            pendingLabel={pendingLabel}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (view.kind === "loading") {
+    // Skeleton placeholders
+    const codes = Object.keys(INDEX_LABEL_MAP);
+    return (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {codes.map((code) => (
+          <div
+            key={code}
+            className="flex flex-col gap-2 rounded-lg border bg-card p-4 shadow-sm animate-pulse"
+          >
+            <div className="h-3 w-16 rounded bg-muted" />
+            <div className="h-7 w-20 rounded bg-muted" />
+            <div className="h-3 w-12 rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (view.kind === "error" || view.kind === "empty") {
+    const codes = Object.keys(INDEX_LABEL_MAP);
+    return (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {codes.map((code) => (
+          <IndexCard
+            key={code}
+            quote={{
+              code,
+              name: "",
+              price: null,
+              prev_close: null,
+              open: null,
+              high: null,
+              low: null,
+              change_pct: null,
+            }}
+            pendingLabel={view.kind === "error" ? view.message : pendingLabel}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // data / partial — render real or partial quote rows
+  const quotes = view.quotes;
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {quotes.map((q) => (
+        <IndexCard key={q.code} quote={q} pendingLabel={pendingLabel} />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Watchlist Table
 // ---------------------------------------------------------------------------
 
 function WatchlistTable({
@@ -90,7 +207,6 @@ function WatchlistTable({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Section header */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
         <button
@@ -104,7 +220,6 @@ function WatchlistTable({
         </button>
       </div>
 
-      {/* Table */}
       <div className="overflow-hidden rounded-lg border">
         <table className="w-full text-left text-xs">
           <thead>
@@ -142,11 +257,11 @@ function WatchlistTable({
 
 export function Overview() {
   const { t } = useTranslation();
-  const [mockRefreshed, setMockRefreshed] = useState(false);
+  const [indexView, setIndexView] = useState<IndexQuoteView>({ kind: "disabled" });
+  const [loading, setLoading] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Clean up the mock-refresh timer on unmount so we never call setState
-  // on an unmounted component.
+  // Clean up the mock-refresh timer on unmount.
   useEffect(() => {
     return () => {
       if (refreshTimerRef.current !== null) {
@@ -156,15 +271,23 @@ export function Overview() {
     };
   }, []);
 
-  const handleMockRefresh = useCallback(() => {
-    // Mock-only — no fetch, no axios, no useQuery, no real API call.
-    setMockRefreshed(true);
-    if (refreshTimerRef.current !== null) clearTimeout(refreshTimerRef.current);
-    refreshTimerRef.current = setTimeout(() => {
-      setMockRefreshed(false);
-      refreshTimerRef.current = null;
-    }, 2500);
-  }, []);
+  const handleRefresh = useCallback(async () => {
+    if (loading) return;
+    setLoading(true);
+    setIndexView({ kind: "loading" });
+    try {
+      const envelope = await loadIndexQuotes({ mode: DEFAULT_INDEX_MODE });
+      setIndexView(toIndexQuoteView(envelope));
+    } catch {
+      setIndexView({
+        kind: "error",
+        errorCode: "client_error",
+        message: t("overview.mockRefreshed"),
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, t]);
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
@@ -187,26 +310,24 @@ export function Overview() {
               </div>
             </div>
 
-            {/* Refresh button — mock-only, never hits a real endpoint */}
+            {/* Refresh button — triggers loadIndexQuotes in default mode */}
             <button
               type="button"
-              onClick={handleMockRefresh}
+              onClick={handleRefresh}
+              disabled={loading}
               aria-label={t("overview.refresh")}
-              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted/50"
+              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
             >
               <RefreshCw
-                className={cn(
-                  "h-3.5 w-3.5",
-                  mockRefreshed && "animate-spin",
-                )}
+                className={cn("h-3.5 w-3.5", loading && "animate-spin")}
               />
               {t("overview.refresh")}
             </button>
           </div>
 
-          {/* Mock refresh feedback banner */}
-          {mockRefreshed && (
-            <div className="rounded-md border border-dashed bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
+          {/* Partial warning banner */}
+          {indexView.kind === "partial" && indexView.warnings.length > 0 && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
               {t("overview.mockRefreshed")}
             </div>
           )}
@@ -217,15 +338,10 @@ export function Overview() {
           <h2 className="text-sm font-semibold tracking-tight">
             {t("overview.indicesTitle")}
           </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {MOCK_INDICES.map((idx) => (
-              <IndexCard
-                key={idx.key}
-                labelKey={idx.labelKey}
-                pendingLabel={t("overview.indicesPending")}
-              />
-            ))}
-          </div>
+          <IndexCardGrid
+            view={indexView}
+            pendingLabel={t("overview.indicesPending")}
+          />
         </section>
 
         {/* ── A-Share Watchlist ──────────────────────────────────────── */}

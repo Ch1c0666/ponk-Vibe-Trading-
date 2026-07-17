@@ -804,6 +804,17 @@
       "liquidCooling": "التبريد السائل",
       "mlcc": "MLCC",
       "glassSubstrate": "ركيزة زجاجية"
+    },
+    "templatesDesc": "اختر قطاعاً لعرض قالب إطار البحث الخاص به. جميع الحقول عناصر نائبة.",
+    "template": {
+      "researchFramework": "إطار البحث",
+      "positioning": "تحديد موقع القطاع",
+      "intlLandscape": "المشهد التنافسي الدولي",
+      "domesticLandscape": "المشهد التنافسي المحلي",
+      "barrierType": "نوع الحاجز",
+      "scoringSystem": "نظام التسجيل",
+      "coreTargets": "الأهداف الأساسية",
+      "targetPlaceholder": "الهدف {{n}}"
     }
   }
 }

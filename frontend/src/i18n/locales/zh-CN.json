@@ -804,6 +804,17 @@
       "liquidCooling": "液冷散热",
       "mlcc": "MLCC",
       "glassSubstrate": "玻璃基板"
+    },
+    "templatesDesc": "选择一个环节查看其研究框架模板。所有字段均为占位状态，待后续版本填充实际数据。",
+    "template": {
+      "researchFramework": "研究框架",
+      "positioning": "环节定位",
+      "intlLandscape": "国际竞争格局",
+      "domesticLandscape": "国内竞争格局",
+      "barrierType": "壁垒类型",
+      "scoringSystem": "评分体系",
+      "coreTargets": "核心标的",
+      "targetPlaceholder": "标的 {{n}}"
     }
   }
 }

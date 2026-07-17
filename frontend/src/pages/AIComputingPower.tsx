@@ -1,7 +1,22 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Cpu, FileText, GitBranch, LayoutTemplate, Search } from "lucide-react";
+import {
+  Building2,
+  Cpu,
+  FileText,
+  GitBranch,
+  Globe,
+  LayoutTemplate,
+  Search,
+  Shield,
+  Star,
+  Target,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  SegmentResearchTemplate,
+  type SegmentMeta,
+} from "@/components/common/SegmentResearchTemplate";
 
 // ---------------------------------------------------------------------------
 // Sub-tab definitions
@@ -18,7 +33,7 @@ type TabKey = (typeof TABS)[number]["key"];
 // ---------------------------------------------------------------------------
 // 8 supply-chain segment cards — placeholder only, no real data
 // ---------------------------------------------------------------------------
-const SEGMENTS = [
+const SEGMENTS: SegmentMeta[] = [
   { key: "computeChip", labelKey: "aiComputing.segments.computeChip" },
   { key: "hbm", labelKey: "aiComputing.segments.hbm" },
   { key: "opticalModule", labelKey: "aiComputing.segments.opticalModule" },
@@ -27,7 +42,16 @@ const SEGMENTS = [
   { key: "liquidCooling", labelKey: "aiComputing.segments.liquidCooling" },
   { key: "mlcc", labelKey: "aiComputing.segments.mlcc" },
   { key: "glassSubstrate", labelKey: "aiComputing.segments.glassSubstrate" },
-] as const;
+];
+
+/** Field labels shown on each overview card — aligned with TEMPLATE_SECTIONS. */
+const OVERVIEW_FIELDS = [
+  { icon: Target, labelKey: "aiComputing.template.positioning" },
+  { icon: Globe, labelKey: "aiComputing.template.intlLandscape" },
+  { icon: Building2, labelKey: "aiComputing.template.domesticLandscape" },
+  { icon: Shield, labelKey: "aiComputing.template.barrierType" },
+  { icon: Star, labelKey: "aiComputing.template.scoringSystem" },
+];
 
 // ---------------------------------------------------------------------------
 // Page
@@ -80,7 +104,7 @@ export function AIComputingPower() {
         {/* ---- Tab content ---- */}
         <section className="min-h-[50vh]">
           {activeTab === "overview" && <OverviewTab />}
-          {activeTab === "templates" && <PlaceholderTab tab="templates" />}
+          {activeTab === "templates" && <TemplatesTab />}
           {activeTab === "reports" && <PlaceholderTab tab="reports" />}
           {activeTab === "structure" && <PlaceholderTab tab="structure" />}
         </section>
@@ -90,7 +114,7 @@ export function AIComputingPower() {
 }
 
 // ---------------------------------------------------------------------------
-// Overview tab — 8 segment cards in a responsive grid
+// Overview tab — 8 segment cards with field labels
 // ---------------------------------------------------------------------------
 function OverviewTab() {
   const { t } = useTranslation();
@@ -101,23 +125,30 @@ function OverviewTab() {
         {t("aiComputing.overviewDesc")}
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {SEGMENTS.map(({ key, labelKey }) => (
+        {SEGMENTS.map((segment) => (
           <article
-            key={key}
+            key={segment.key}
             className="group rounded-lg border bg-card p-5 transition hover:border-primary/40 hover:shadow-sm"
           >
             <div className="flex items-center gap-2 mb-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
                 <Cpu className="h-4 w-4 text-primary" />
               </div>
-              <h3 className="font-semibold text-sm">{t(labelKey)}</h3>
+              <h3 className="font-semibold text-sm">{t(segment.labelKey as any)}</h3>
             </div>
-            <div className="space-y-2">
-              <div className="h-2 w-3/4 rounded bg-muted animate-pulse" />
-              <div className="h-2 w-1/2 rounded bg-muted animate-pulse" />
-              <div className="h-2 w-2/3 rounded bg-muted animate-pulse" />
-            </div>
-            <p className="mt-4 text-xs text-muted-foreground italic">
+            {/* Field labels aligned with template sections */}
+            <ul className="space-y-1.5 mb-3">
+              {OVERVIEW_FIELDS.map(({ icon: Icon, labelKey }) => (
+                <li
+                  key={labelKey}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                >
+                  <Icon className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                  {t(labelKey as any)}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted-foreground/60 italic">
               {t("aiComputing.placeholder")}
             </p>
           </article>
@@ -128,7 +159,47 @@ function OverviewTab() {
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder tab for templates / reports / structure
+// Templates tab — segment selector + full research framework
+// ---------------------------------------------------------------------------
+function TemplatesTab() {
+  const { t } = useTranslation();
+  const [selectedKey, setSelectedKey] = useState(SEGMENTS[0].key);
+
+  const active = SEGMENTS.find((s) => s.key === selectedKey) ?? SEGMENTS[0];
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        {t("aiComputing.templatesDesc")}
+      </p>
+
+      {/* Segment picker */}
+      <div className="flex flex-wrap gap-2">
+        {SEGMENTS.map((segment) => (
+          <button
+            key={segment.key}
+            type="button"
+            onClick={() => setSelectedKey(segment.key)}
+            className={cn(
+              "rounded-md border px-3 py-1.5 text-sm transition-colors",
+              selectedKey === segment.key
+                ? "border-primary bg-primary/10 text-primary font-medium"
+                : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+            )}
+          >
+            {t(segment.labelKey as any)}
+          </button>
+        ))}
+      </div>
+
+      {/* Reusable template for the active segment */}
+      <SegmentResearchTemplate segment={active} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder tab for reports / structure
 // ---------------------------------------------------------------------------
 function PlaceholderTab({ tab }: { tab: string }) {
   const { t } = useTranslation();

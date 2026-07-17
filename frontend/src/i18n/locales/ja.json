@@ -804,6 +804,17 @@
       "liquidCooling": "液冷",
       "mlcc": "MLCC",
       "glassSubstrate": "ガラス基板"
+    },
+    "templatesDesc": "セグメントを選択して研究フレームワークテンプレートを表示します。すべてのフィールドはプレースホルダーです。",
+    "template": {
+      "researchFramework": "研究フレームワーク",
+      "positioning": "セグメントポジショニング",
+      "intlLandscape": "国際競争環境",
+      "domesticLandscape": "国内競争環境",
+      "barrierType": "参入障壁タイプ",
+      "scoringSystem": "評価体系",
+      "coreTargets": "主要ターゲット",
+      "targetPlaceholder": "ターゲット {{n}}"
     }
   }
 }

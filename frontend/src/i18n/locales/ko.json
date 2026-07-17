@@ -804,6 +804,17 @@
       "liquidCooling": "액체 냉각",
       "mlcc": "MLCC",
       "glassSubstrate": "유리 기판"
+    },
+    "templatesDesc": "세그먼트를 선택하여 연구 프레임워크 템플릿을 확인하세요. 모든 필드는 플레이스홀더 상태입니다.",
+    "template": {
+      "researchFramework": "연구 프레임워크",
+      "positioning": "세그먼트 포지셔닝",
+      "intlLandscape": "국제 경쟁 구도",
+      "domesticLandscape": "국내 경쟁 구도",
+      "barrierType": "진입 장벽 유형",
+      "scoringSystem": "평가 체계",
+      "coreTargets": "핵심 타겟",
+      "targetPlaceholder": "타겟 {{n}}"
     }
   }
 }

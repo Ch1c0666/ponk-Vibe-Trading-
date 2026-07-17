@@ -804,6 +804,17 @@
       "liquidCooling": "Liquid Cooling",
       "mlcc": "MLCC",
       "glassSubstrate": "Glass Substrate"
+    },
+    "templatesDesc": "Select a segment to view its research framework template. All fields are placeholders; actual data will be added in future releases.",
+    "template": {
+      "researchFramework": "Research Framework",
+      "positioning": "Segment Positioning",
+      "intlLandscape": "International Landscape",
+      "domesticLandscape": "Domestic Landscape",
+      "barrierType": "Barrier Type",
+      "scoringSystem": "Scoring System",
+      "coreTargets": "Core Targets",
+      "targetPlaceholder": "Target {{n}}"
     }
   }
 }

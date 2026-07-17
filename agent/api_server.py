@@ -233,6 +233,10 @@ register_overview_routes(app)
 from src.api.research_report_routes import register_research_report_routes  # noqa: E402
 register_research_report_routes(app)
 
+# --- Stock Quote ---
+from src.api.stock_quote_routes import register_stock_quote_routes  # noqa: E402
+register_stock_quote_routes(app)
+
 # --- Channels ---
 from src.api.channels_routes import register_channels_routes  # noqa: E402
 register_channels_routes(app)

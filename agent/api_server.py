@@ -225,6 +225,10 @@ from src.api.uploads_routes import (  # noqa: F401, E402
     _UPLOAD_CHUNK_SIZE,
 )
 
+# --- Overview ---
+from src.api.overview_routes import register_overview_routes  # noqa: E402
+register_overview_routes(app)
+
 # --- Channels ---
 from src.api.channels_routes import register_channels_routes  # noqa: E402
 register_channels_routes(app)

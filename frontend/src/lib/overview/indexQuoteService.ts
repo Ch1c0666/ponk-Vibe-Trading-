@@ -91,9 +91,8 @@ const MOCK_ENVELOPE: IndexQuoteEnvelope = {
  *
  * - **disabled** (default): returns ``{ kind: "disabled" }`` — no network.
  * - **mock**: returns a static ``[Mock]``-prefixed envelope — no network.
- * - **real**: fail-closed — returns ``ok:false`` with
- *   ``error_code: "real_mode_not_wired"``.  No network access.
- *   Reserved for a validated backend API/MCP client path.
+ * - **real**: GET ``/api/overview/index-quotes`` and return the parsed
+ *   envelope.  The backend REST endpoint wraps ``get_index_quotes``.
  */
 export async function loadIndexQuotes(
   options?: IndexQuoteServiceOptions,
@@ -113,12 +112,58 @@ export async function loadIndexQuotes(
     return { ...MOCK_ENVELOPE };
   }
 
-  // -- real mode — fail-closed until a validated client path exists ---------
-  return {
-    ok: false,
-    source: "tencent",
-    error:
-      "Real index quote mode requires a validated backend API/MCP client path.",
-    error_code: "real_mode_not_wired",
-  };
+  // -- real mode — GET /api/overview/index-quotes --------------------------
+  return _fetchReal();
+}
+
+// ---------------------------------------------------------------------------
+// Real-mode fetch — GET the plain REST endpoint.  No MCP protocol.
+// ---------------------------------------------------------------------------
+
+const REAL_ENDPOINT = "/api/overview/index-quotes";
+
+async function _fetchReal(): Promise<IndexQuoteEnvelope> {
+  let response: Response;
+  try {
+    response = await fetch(REAL_ENDPOINT);
+  } catch (err) {
+    return {
+      ok: false,
+      source: "tencent",
+      error: `Index quote request failed: ${err instanceof Error ? err.message : String(err)}`,
+      error_code: "provider_request_failed",
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      source: "tencent",
+      error: `Index quote endpoint returned HTTP ${response.status}`,
+      error_code: "provider_request_failed",
+    };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return {
+      ok: false,
+      source: "tencent",
+      error: "Index quote endpoint returned non-JSON response",
+      error_code: "provider_parse_error",
+    };
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return {
+      ok: false,
+      source: "tencent",
+      error: "Index quote endpoint returned unexpected response format",
+      error_code: "provider_parse_error",
+    };
+  }
+
+  return payload as IndexQuoteEnvelope;
 }

@@ -1,13 +1,149 @@
 import { useTranslation } from "react-i18next";
-import { Calendar, FileSearch, Filter, Search, SortAsc } from "lucide-react";
+import {
+  AlertTriangle,
+  Calendar,
+  FileSearch,
+  Filter,
+  Loader2,
+  RefreshCw,
+  Search,
+  SortAsc,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Report library shell — search, filter, sort controls wired to empty state.
-// No real data, no API calls, no report content.
+// State types — each state is a discriminated union variant.
+// All data fields accept only mock / placeholder values; real company names,
+// stock codes, or report content are forbidden.
 // ---------------------------------------------------------------------------
 
-export function ReportLibrary() {
+/** A single mock-only report card. All fields are placeholder strings. */
+export interface MockReportCard {
+  id: string;
+  title: string;
+  brokerage: string;
+  analyst: string | null;
+  publishDate: string;
+  rating: string | null;
+  segmentKey: string;
+}
+
+export interface ReportWarning {
+  code: string;
+  message: string;
+  page: number;
+}
+
+export type ReportLibraryView =
+  | { kind: "empty" }
+  | { kind: "loading" }
+  | { kind: "error"; errorCode: string; message: string }
+  | {
+      kind: "data";
+      reports: MockReportCard[];
+      total: number;
+      shown: number;
+    }
+  | {
+      kind: "partial";
+      reports: MockReportCard[];
+      total: number;
+      shown: number;
+      warnings: ReportWarning[];
+    };
+
+// ---------------------------------------------------------------------------
+// Mock-only fixtures — every field is a placeholder. No real companies,
+// stock codes, or report titles.
+// ---------------------------------------------------------------------------
+
+export const MOCK_LOADING_VIEW: ReportLibraryView = { kind: "loading" };
+
+export const MOCK_ERROR_VIEW: ReportLibraryView = {
+  kind: "error",
+  errorCode: "mock_error",
+  message: "[Mock] The report provider returned an error. This is a test fixture.",
+};
+
+export const MOCK_DATA_VIEW: ReportLibraryView = {
+  kind: "data",
+  reports: [
+    {
+      id: "MOCK-001",
+      title: "[Mock] AI Compute Chip Industry Outlook",
+      brokerage: "[Mock] Broker Alpha",
+      analyst: "[Mock] Zhang San",
+      publishDate: "2026-07-01",
+      rating: "[Mock] Outperform",
+      segmentKey: "computeChip",
+    },
+    {
+      id: "MOCK-002",
+      title: "[Mock] HBM Supply Chain Analysis",
+      brokerage: "[Mock] Broker Beta",
+      analyst: null,
+      publishDate: "2026-06-28",
+      rating: "[Mock] Buy",
+      segmentKey: "hbm",
+    },
+    {
+      id: "MOCK-003",
+      title: "[Mock] Optical Module Technology Review",
+      brokerage: "[Mock] Broker Gamma",
+      analyst: "[Mock] Li Si",
+      publishDate: "2026-06-15",
+      rating: null,
+      segmentKey: "opticalModule",
+    },
+  ],
+  total: 3,
+  shown: 3,
+};
+
+export const MOCK_PARTIAL_VIEW: ReportLibraryView = {
+  kind: "partial",
+  reports: [
+    {
+      id: "MOCK-P01",
+      title: "[Mock] Liquid Cooling Solutions Report",
+      brokerage: "[Mock] Broker Delta",
+      analyst: "[Mock] Wang Wu",
+      publishDate: "2026-07-10",
+      rating: "[Mock] Neutral",
+      segmentKey: "liquidCooling",
+    },
+  ],
+  total: 15,
+  shown: 1,
+  warnings: [
+    {
+      code: "provider_page_failed",
+      message: "[Mock] Page 2 request failed: connection timeout",
+      page: 2,
+    },
+    {
+      code: "provider_hits_absent",
+      message: "[Mock] Response missing 'hits' field; result may be incomplete",
+      page: 1,
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
+interface ReportLibraryProps {
+  /** Which state to render. Defaults to empty when omitted. */
+  view?: ReportLibraryView;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+export function ReportLibrary({ view }: ReportLibraryProps) {
   const { t } = useTranslation();
+  const state: ReportLibraryView = view ?? { kind: "empty" };
 
   return (
     <div className="space-y-6">
@@ -16,32 +152,35 @@ export function ReportLibrary() {
         {t("aiComputing.reportsDesc")}
       </p>
 
-      {/* Toolbar — filter/sort controls, all non-functional */}
+      {/* Toolbar — enabled only when data may be available */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Search */}
         <label className="relative flex-1 max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            disabled
+            disabled={state.kind === "empty" || state.kind === "loading"}
             placeholder={t("aiComputing.reports.searchPlaceholder")}
             className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm text-muted-foreground outline-none disabled:cursor-not-allowed disabled:opacity-50"
           />
         </label>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Segment filter */}
-          <div className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+          <div
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm",
+              state.kind === "empty" || state.kind === "loading"
+                ? "text-muted-foreground"
+                : "text-muted-foreground",
+            )}
+          >
             <Filter className="h-3.5 w-3.5" />
             <span>{t("aiComputing.reports.filterSegment")}</span>
           </div>
 
-          {/* Date filter */}
           <div className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" />
             <span>{t("aiComputing.reports.filterDate")}</span>
           </div>
 
-          {/* Sort */}
           <div className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm text-muted-foreground">
             <SortAsc className="h-3.5 w-3.5" />
             <span>{t("aiComputing.reports.sort")}</span>
@@ -49,23 +188,213 @@ export function ReportLibrary() {
         </div>
       </div>
 
-      {/* Count bar */}
+      {/* State body */}
+      {state.kind === "empty" && <EmptyState />}
+      {state.kind === "loading" && <LoadingState />}
+      {state.kind === "error" && (
+        <ErrorState errorCode={state.errorCode} message={state.message} />
+      )}
+      {state.kind === "data" && (
+        <DataState
+          reports={state.reports}
+          total={state.total}
+          shown={state.shown}
+        />
+      )}
+      {state.kind === "partial" && (
+        <PartialState
+          reports={state.reports}
+          total={state.total}
+          shown={state.shown}
+          warnings={state.warnings}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-views
+// ---------------------------------------------------------------------------
+
+function EmptyState() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-20 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+        <FileSearch className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <h2 className="mt-4 text-lg font-medium">
+        {t("aiComputing.reports.emptyTitle")}
+      </h2>
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+        {t("aiComputing.reports.emptyDesc")}
+      </p>
+    </div>
+  );
+}
+
+function LoadingState() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-4">
       <div className="text-sm text-muted-foreground/60">
         {t("aiComputing.reports.count", { shown: 0, total: 0 })}
       </div>
-
-      {/* Empty state */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-20 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-          <FileSearch className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h2 className="mt-4 text-lg font-medium">
-          {t("aiComputing.reports.emptyTitle")}
-        </h2>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          {t("aiComputing.reports.emptyDesc")}
+      <div className="flex flex-col items-center justify-center rounded-lg border py-20 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="mt-3 text-sm text-muted-foreground">
+          {t("aiComputing.reports.loadingText")}
         </p>
       </div>
+    </div>
+  );
+}
+
+function ErrorState({
+  errorCode,
+  message,
+}: {
+  errorCode: string;
+  message: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <div className="text-sm text-muted-foreground/60">
+        {t("aiComputing.reports.count", { shown: 0, total: 0 })}
+      </div>
+      <div className="flex flex-col items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 py-16 text-center">
+        <AlertTriangle className="h-8 w-8 text-destructive" />
+        <h2 className="mt-3 text-lg font-medium">
+          {t("aiComputing.reports.errorTitle")}
+        </h2>
+        <p className="mt-1 max-w-md text-sm text-muted-foreground">
+          {t("aiComputing.reports.errorDesc", { code: errorCode, message })}
+        </p>
+        <button
+          type="button"
+          className="mt-4 inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+          disabled
+        >
+          <RefreshCw className="h-4 w-4" />
+          {t("aiComputing.reports.retry")}
+        </button>
+      </div>
+    </>
+  );
+}
+
+function DataState({
+  reports,
+  total,
+  shown,
+}: {
+  reports: MockReportCard[];
+  total: number;
+  shown: number;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <div className="text-sm text-muted-foreground/60">
+        {t("aiComputing.reports.count", { shown, total })}
+      </div>
+      <ReportCardList reports={reports} />
+    </>
+  );
+}
+
+function PartialState({
+  reports,
+  total,
+  shown,
+  warnings,
+}: {
+  reports: MockReportCard[];
+  total: number;
+  shown: number;
+  warnings: ReportWarning[];
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {/* Warning banner */}
+      <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="h-4 w-4" />
+          {t("aiComputing.reports.partialBanner")}
+        </div>
+        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+          {warnings.map((w, i) => (
+            <li key={i}>
+              [{w.code}] {w.message}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="text-sm text-muted-foreground/60">
+        {t("aiComputing.reports.count", { shown, total })}
+      </div>
+      <ReportCardList reports={reports} />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Report card list
+// ---------------------------------------------------------------------------
+function ReportCardList({ reports }: { reports: MockReportCard[] }) {
+  const { t } = useTranslation();
+
+  const segmentLabels: Record<string, string> = {
+    computeChip: "aiComputing.segments.computeChip",
+    hbm: "aiComputing.segments.hbm",
+    opticalModule: "aiComputing.segments.opticalModule",
+    pcb: "aiComputing.segments.pcb",
+    switchChip: "aiComputing.segments.switchChip",
+    liquidCooling: "aiComputing.segments.liquidCooling",
+    mlcc: "aiComputing.segments.mlcc",
+    glassSubstrate: "aiComputing.segments.glassSubstrate",
+  };
+
+  return (
+    <div className="grid gap-3">
+      {reports.map((report) => (
+        <article
+          key={report.id}
+          className="rounded-md border p-4 transition hover:border-primary/40 hover:bg-muted/30"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                  {t(segmentLabels[report.segmentKey] as any) ?? report.segmentKey}
+                </span>
+                {report.rating && (
+                  <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {report.rating}
+                  </span>
+                )}
+              </div>
+              <h3 className="text-sm font-medium leading-snug">
+                {report.title}
+              </h3>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span>{report.brokerage}</span>
+                {report.analyst && <span>{report.analyst}</span>}
+                <span>{report.publishDate}</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
     </div>
   );
 }

@@ -838,7 +838,12 @@
       "sort": "排序",
       "count": "共 {{total}} 篇，显示 {{shown}} 篇",
       "emptyTitle": "暂无研报",
-      "emptyDesc": "研报数据尚未接入。待券商研报推送链路就绪后，此处将展示各环节 AI 算力相关研报，支持按标题、券商、日期检索。"
+      "emptyDesc": "研报数据尚未接入。待券商研报推送链路就绪后，此处将展示各环节 AI 算力相关研报，支持按标题、券商、日期检索。",
+      "loadingText": "正在加载研报…",
+      "errorTitle": "研报加载失败",
+      "errorDesc": "错误代码：{{code}}。{{message}}",
+      "retry": "重试",
+      "partialBanner": "部分页面请求失败，结果可能不完整。"
     },
     "detail": {
       "backToOverview": "返回 AI 算力总览",

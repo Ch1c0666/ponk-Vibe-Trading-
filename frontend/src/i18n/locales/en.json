@@ -838,7 +838,12 @@
       "sort": "Sort",
       "count": "{{total}} total, {{shown}} shown",
       "emptyTitle": "No reports yet",
-      "emptyDesc": "Report data has not been ingested. Once the brokerage report feed is connected, AI computing research reports will appear here, searchable by title, brokerage, and date."
+      "emptyDesc": "Report data has not been ingested. Once the brokerage report feed is connected, AI computing research reports will appear here, searchable by title, brokerage, and date.",
+      "loadingText": "Loading reports…",
+      "errorTitle": "Report loading failed",
+      "errorDesc": "Error code: {{code}}. {{message}}",
+      "retry": "Retry",
+      "partialBanner": "Some pages failed to load. Results may be incomplete."
     },
     "detail": {
       "backToOverview": "Back to AI Compute overview",

@@ -838,7 +838,12 @@
       "sort": "정렬",
       "count": "총 {{total}}건, {{shown}}건 표시",
       "emptyTitle": "아직 보고서 없음",
-      "emptyDesc": "보고서 데이터가 아직 수집되지 않았습니다. 증권사 보고서 피드가 연결되면 AI 컴퓨팅 관련 연구 보고서가 여기에 표시됩니다."
+      "emptyDesc": "보고서 데이터가 아직 수집되지 않았습니다. 증권사 보고서 피드가 연결되면 AI 컴퓨팅 관련 연구 보고서가 여기에 표시됩니다.",
+      "loadingText": "리포트 로딩 중…",
+      "errorTitle": "리포트 로딩 실패",
+      "errorDesc": "오류 코드: {{code}}. {{message}}",
+      "retry": "재시도",
+      "partialBanner": "일부 페이지 로딩에 실패했습니다. 결과가 불완전할 수 있습니다."
     },
     "detail": {
       "backToOverview": "AI 컴퓨트 개요로 돌아가기",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -20,7 +20,10 @@ import {
   type SegmentMeta,
 } from "@/components/common/SegmentResearchTemplate";
 import { SupplyChainStructure } from "@/components/common/SupplyChainStructure";
-import { ReportLibrary } from "@/components/common/ReportLibrary";
+import { ReportLibrary, type ReportLibraryView } from "@/components/common/ReportLibrary";
+import { loadReportLibrary } from "@/lib/aiComputing/reportLibraryService";
+import { toReportLibraryView } from "@/lib/aiComputing/reportLibraryAdapter";
+import { segmentCodeMap, type AiComputingSegmentKey } from "@/lib/aiComputing/segmentCodeMap";
 
 // ---------------------------------------------------------------------------
 // Sub-tab definitions
@@ -132,7 +135,7 @@ function TabLayout() {
         <section className="min-h-[50vh]">
           {activeTab === "overview" && <OverviewTab />}
           {activeTab === "templates" && <TemplatesTab />}
-          {activeTab === "reports" && <ReportLibrary />}
+          {activeTab === "reports" && <ReportsTab />}
           {activeTab === "structure" && <StructureTab />}
         </section>
       </div>
@@ -296,6 +299,76 @@ function TemplatesTab() {
 
       {/* Reusable template for the active segment */}
       <SegmentResearchTemplate segment={active} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Reports tab — segment selector + real-mode ReportLibrary via segmentCodeMap
+// ---------------------------------------------------------------------------
+function ReportsTab() {
+  const { t } = useTranslation();
+  const [selectedKey, setSelectedKey] = useState(SEGMENTS[0].key);
+  const [view, setView] = useState<ReportLibraryView>({ kind: "empty" });
+
+  useEffect(() => {
+    let cancelled = false;
+    const codes = segmentCodeMap[selectedKey as AiComputingSegmentKey] ?? [];
+
+    // codes is always empty until segmentCodeMap is populated — fail-closed.
+    loadReportLibrary(
+      { codes: [...codes], segmentKey: selectedKey },
+      { mode: "real" },
+    ).then((envelope) => {
+      if (!cancelled) setView(toReportLibraryView(envelope));
+    }).catch(() => {
+      if (!cancelled) setView({ kind: "error", errorCode: "client_error", message: "Failed to load reports." });
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedKey]);
+
+  const codes = segmentCodeMap[selectedKey as AiComputingSegmentKey] ?? [];
+  const hasCodes = codes.length > 0;
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        {t("aiComputing.reportsDesc")}
+      </p>
+
+      {/* Stock-level aggregation notice — persistent, not dismissible */}
+      <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+        {t("aiComputing.reports.aggregationNotice")}
+      </div>
+
+      {/* Code list audit status */}
+      {!hasCodes && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">
+          {t("aiComputing.reports.codesPendingReview")}
+        </div>
+      )}
+
+      {/* Segment picker */}
+      <div className="flex flex-wrap gap-2">
+        {SEGMENTS.map((segment) => (
+          <button
+            key={segment.key}
+            type="button"
+            onClick={() => setSelectedKey(segment.key)}
+            className={cn(
+              "rounded-md border px-3 py-1.5 text-sm transition-colors",
+              selectedKey === segment.key
+                ? "border-primary bg-primary/10 text-primary font-medium"
+                : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+            )}
+          >
+            {t(segment.labelKey as any)}
+          </button>
+        ))}
+      </div>
+
+      <ReportLibrary view={view} descriptionKey="aiComputing.reportsDesc" />
     </div>
   );
 }

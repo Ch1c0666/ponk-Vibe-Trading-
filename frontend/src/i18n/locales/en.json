@@ -834,6 +834,8 @@
     },
     "reportsDesc": "AI computing supply chain research report library. Filter and sort by segment, brokerage, and date. This is a placeholder shell; report content will be added once data ingestion is wired up.",
     "reports": {
+      "aggregationNotice": "Stock-level report aggregation (q_type=0). Individual stock research reports are grouped by supply chain segment. This is NOT an industry-wide report.",
+      "codesPendingReview": "Stock code list pending manual review. No real tickers are currently mapped to this segment. Reports will appear once the segment code map is audited and populated.",
       "searchPlaceholder": "Search report titles…",
       "filterSegment": "Filter segment",
       "filterDate": "Date range",

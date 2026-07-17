@@ -21,7 +21,8 @@
     "dark": "ダーク",
     "language": "言語",
     "collapse": "折りたたむ",
-    "expand": "展開"
+    "expand": "展開",
+    "aiComputing": "AI コンピュート"
   },
   "runtime": {
     "monitorBadge": "ランタイムモニター",
@@ -775,5 +776,34 @@
     "noPriceData": "価格データがありません",
     "noCorrelationData": "相関データがありません",
     "noEquityData": "エクイティデータがありません"
+  },
+  "aiComputing": {
+    "badge": "AI コンピュート",
+    "title": "AI コンピュート",
+    "subtitle": "AIコンピューティングサプライチェーン研究フレームワーク——LLMの学習・推論基盤を支えるコンピュートチップから先進パッケージングまでを追跡。",
+    "overviewDesc": "AIコンピューティングサプライチェーンのコアセグメント。各モジュールは関連企業、研究レポート、技術動向を独立して追跡します。",
+    "placeholder": "準備中",
+    "templatesPlaceholderTitle": "研究テンプレート",
+    "templatesPlaceholderDesc": "研究テンプレートは近日公開予定です。",
+    "reportsPlaceholderTitle": "レポートライブラリ",
+    "reportsPlaceholderDesc": "レポートライブラリは近日公開予定です。",
+    "structurePlaceholderTitle": "構造図",
+    "structurePlaceholderDesc": "サプライチェーン構造図は近日公開予定です。",
+    "tabs": {
+      "overview": "概要",
+      "templates": "テンプレート",
+      "reports": "レポート",
+      "structure": "構造"
+    },
+    "segments": {
+      "computeChip": "コンピュートチップ",
+      "hbm": "HBM",
+      "opticalModule": "光モジュール",
+      "pcb": "PCB",
+      "switchChip": "スイッチチップ",
+      "liquidCooling": "液冷",
+      "mlcc": "MLCC",
+      "glassSubstrate": "ガラス基板"
+    }
   }
 }

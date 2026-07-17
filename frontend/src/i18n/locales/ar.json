@@ -21,7 +21,8 @@
     "dark": "داكن",
     "language": "اللغة",
     "collapse": "طي",
-    "expand": "توسيع"
+    "expand": "توسيع",
+    "aiComputing": "حوسبة الذكاء الاصطناعي"
   },
   "runtime": {
     "monitorBadge": "مراقب وقت التشغيل",
@@ -775,5 +776,34 @@
     "noPriceData": "لا توجد بيانات أسعار",
     "noCorrelationData": "لا توجد بيانات ارتباط",
     "noEquityData": "لا توجد بيانات أصول"
+  },
+  "aiComputing": {
+    "badge": "حوسبة الذكاء الاصطناعي",
+    "title": "حوسبة الذكاء الاصطناعي",
+    "subtitle": "إطار بحث سلسلة توريد حوسبة الذكاء الاصطناعي——تتبع رقاقات الحوسبة والتغليف المتقدمة التي تدعم تدريب واستدلال النماذج اللغوية الكبيرة.",
+    "overviewDesc": "القطاعات الأساسية لسلسلة توريد حوسبة الذكاء الاصطناعي. يتتبع كل وحدة الشركات والتقارير البحثية واتجاهات التقنية ذات الصلة بشكل مستقل.",
+    "placeholder": "قريباً",
+    "templatesPlaceholderTitle": "قوالب البحث",
+    "templatesPlaceholderDesc": "قوالب البحث قادمة قريباً.",
+    "reportsPlaceholderTitle": "مكتبة التقارير",
+    "reportsPlaceholderDesc": "مكتبة التقارير قادمة قريباً.",
+    "structurePlaceholderTitle": "مخطط الهيكل",
+    "structurePlaceholderDesc": "مخطط هيكل سلسلة التوريد قادم قريباً.",
+    "tabs": {
+      "overview": "نظرة عامة",
+      "templates": "القوالب",
+      "reports": "التقارير",
+      "structure": "الهيكل"
+    },
+    "segments": {
+      "computeChip": "رقاقة الحوسبة",
+      "hbm": "HBM",
+      "opticalModule": "الوحدة البصرية",
+      "pcb": "PCB",
+      "switchChip": "رقاقة التبديل",
+      "liquidCooling": "التبريد السائل",
+      "mlcc": "MLCC",
+      "glassSubstrate": "ركيزة زجاجية"
+    }
   }
 }

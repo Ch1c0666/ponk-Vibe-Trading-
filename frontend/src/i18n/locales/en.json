@@ -26,7 +26,8 @@
     "dark": "Dark",
     "language": "Language",
     "collapse": "Collapse",
-    "expand": "Expand"
+    "expand": "Expand",
+    "aiComputing": "AI Compute"
   },
   "runtime": {
     "monitorBadge": "Runtime Monitor",
@@ -775,5 +776,34 @@
   },
   "errorBoundary": {
     "somethingWrong": "Something went wrong"
+  },
+  "aiComputing": {
+    "badge": "AI Compute",
+    "title": "AI Compute",
+    "subtitle": "AI computing supply chain research framework — tracking key segments from compute chips to advanced packaging that underpin LLM training and inference infrastructure.",
+    "overviewDesc": "Core segments of the AI computing supply chain. Each card is a placeholder for one segment; detail pages and data will be added in future releases.",
+    "placeholder": "Coming soon",
+    "templatesPlaceholderTitle": "Research Templates",
+    "templatesPlaceholderDesc": "Research templates coming soon. Standardized research frameworks for each AI computing supply chain segment will be available for one-click reuse.",
+    "reportsPlaceholderTitle": "Report Library",
+    "reportsPlaceholderDesc": "Report library coming soon. Curated broker and institutional research reports on AI computing will be available with filtering and search.",
+    "structurePlaceholderTitle": "Structure Chart",
+    "structurePlaceholderDesc": "Supply chain structure chart coming soon. Visual mapping of upstream-downstream relationships across the AI computing industry.",
+    "tabs": {
+      "overview": "Overview",
+      "templates": "Templates",
+      "reports": "Reports",
+      "structure": "Structure"
+    },
+    "segments": {
+      "computeChip": "Compute Chip",
+      "hbm": "HBM",
+      "opticalModule": "Optical Module",
+      "pcb": "PCB",
+      "switchChip": "Switch Chip",
+      "liquidCooling": "Liquid Cooling",
+      "mlcc": "MLCC",
+      "glassSubstrate": "Glass Substrate"
+    }
   }
 }

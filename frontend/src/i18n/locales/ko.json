@@ -21,7 +21,8 @@
     "dark": "다크",
     "language": "언어",
     "collapse": "접기",
-    "expand": "펼치기"
+    "expand": "펼치기",
+    "aiComputing": "AI 컴퓨트"
   },
   "runtime": {
     "monitorBadge": "런타임 모니터",
@@ -775,5 +776,34 @@
     "noPriceData": "가격 데이터 없음",
     "noCorrelationData": "상관 데이터 없음",
     "noEquityData": "자산 데이터 없음"
+  },
+  "aiComputing": {
+    "badge": "AI 컴퓨트",
+    "title": "AI 컴퓨트",
+    "subtitle": "AI 컴퓨팅 공급망 연구 프레임워크——LLM 학습 및 추론 인프라를 뒷받침하는 컴퓨트 칩부터 첨단 패키징까지 추적합니다.",
+    "overviewDesc": "AI 컴퓨팅 공급망의 핵심 세그먼트입니다. 각 모듈은 관련 기업, 연구 보고서, 기술 동향을 독립적으로 추적합니다.",
+    "placeholder": "준비 중",
+    "templatesPlaceholderTitle": "연구 템플릿",
+    "templatesPlaceholderDesc": "연구 템플릿이 곧 제공될 예정입니다.",
+    "reportsPlaceholderTitle": "리포트 라이브러리",
+    "reportsPlaceholderDesc": "리포트 라이브러리가 곧 제공될 예정입니다.",
+    "structurePlaceholderTitle": "구조도",
+    "structurePlaceholderDesc": "공급망 구조도가 곧 제공될 예정입니다.",
+    "tabs": {
+      "overview": "개요",
+      "templates": "템플릿",
+      "reports": "리포트",
+      "structure": "구조"
+    },
+    "segments": {
+      "computeChip": "컴퓨트 칩",
+      "hbm": "HBM",
+      "opticalModule": "광모듈",
+      "pcb": "PCB",
+      "switchChip": "스위치 칩",
+      "liquidCooling": "액체 냉각",
+      "mlcc": "MLCC",
+      "glassSubstrate": "유리 기판"
+    }
   }
 }

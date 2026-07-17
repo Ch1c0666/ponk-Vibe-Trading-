@@ -21,7 +21,8 @@
     "dark": "暗色",
     "language": "语言",
     "collapse": "收起",
-    "expand": "展开"
+    "expand": "展开",
+    "aiComputing": "AI 算力"
   },
   "runtime": {
     "monitorBadge": "运行时监控",
@@ -775,5 +776,34 @@
     "noPriceData": "暂无价格数据",
     "noCorrelationData": "暂无相关性数据",
     "noEquityData": "暂无收益曲线数据"
+  },
+  "aiComputing": {
+    "badge": "AI 算力",
+    "title": "AI 算力",
+    "subtitle": "AI 算力产业链研究框架——从算力芯片到先进封装，追踪大模型训练与推理基础设施的关键环节。",
+    "overviewDesc": "以下为 AI 算力产业链核心环节，每个模块独立跟踪相关公司、研报与技术动态。各卡片模块为 AI 算力产业链核心环节占位，详情页与数据将在后续版本中补充。",
+    "placeholder": "待补充",
+    "templatesPlaceholderTitle": "研究模板",
+    "templatesPlaceholderDesc": "研究模板即将上线，敬请期待。届时可一键复用 AI 算力产业链各环节的标准化研究框架。",
+    "reportsPlaceholderTitle": "研报库",
+    "reportsPlaceholderDesc": "研报库即将上线，敬请期待。届时将汇聚各券商与机构的 AI 算力相关研报，支持筛选与检索。",
+    "structurePlaceholderTitle": "结构图",
+    "structurePlaceholderDesc": "产业链结构图即将上线，敬请期待。届时将以可视化图谱展示 AI 算力产业上下游关系。",
+    "tabs": {
+      "overview": "总览",
+      "templates": "研究模板",
+      "reports": "研报库",
+      "structure": "结构图"
+    },
+    "segments": {
+      "computeChip": "算力芯片",
+      "hbm": "HBM",
+      "opticalModule": "光模块",
+      "pcb": "PCB",
+      "switchChip": "交换芯片",
+      "liquidCooling": "液冷散热",
+      "mlcc": "MLCC",
+      "glassSubstrate": "玻璃基板"
+    }
   }
 }

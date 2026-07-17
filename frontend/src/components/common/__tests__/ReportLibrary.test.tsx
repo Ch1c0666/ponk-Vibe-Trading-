@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { ReportLibrary } from "../ReportLibrary";
 import {
-  ReportLibrary,
   MOCK_LOADING_VIEW,
   MOCK_ERROR_VIEW,
   MOCK_DATA_VIEW,
   MOCK_PARTIAL_VIEW,
-} from "../ReportLibrary";
+} from "./fixtures/reportLibraryFixtures";
 
 // ---------------------------------------------------------------------------
 // ReportLibrary state machine tests — mock-only data, no real API calls.

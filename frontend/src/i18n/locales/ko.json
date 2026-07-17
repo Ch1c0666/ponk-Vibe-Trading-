@@ -897,7 +897,26 @@
   "overview": {
     "badge": "개요",
     "title": "개요",
-    "subtitle": "시장 및 섹션 개요 플레이스홀더.",
-    "placeholder": "데이터 준비 중"
+    "subtitle": "마켓 대시보드 및 관심종목. 모든 데이터는 Mock 플레이스홀더입니다.",
+    "placeholder": "데이터 준비 중",
+    "refresh": "새로고침",
+    "mockRefreshed": "(Mock) 새로고침 완료 — 실제 데이터를 요청하지 않음",
+    "indicesTitle": "지수 시세",
+    "indicesPending": "보류 중",
+    "indices": {
+      "shanghai": "상하이종합지수",
+      "shenzhen": "선전성분지수",
+      "chinext": "차이넥스트",
+      "star50": "STAR 50"
+    },
+    "aStockWatchlistTitle": "A주 관심종목",
+    "usStockWatchlistTitle": "미국주식 관심종목",
+    "watchlistEmpty": "관심종목 없음",
+    "watchlistAdd": "추가",
+    "tableCode": "코드",
+    "tableName": "이름",
+    "tablePrice": "가격",
+    "tableChange": "변동률",
+    "tableActions": "작업"
   }
 }

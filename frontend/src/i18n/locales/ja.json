@@ -897,7 +897,26 @@
   "overview": {
     "badge": "概要",
     "title": "概要",
-    "subtitle": "市場・セクション概要プレースホルダー。",
-    "placeholder": "データ準備中"
+    "subtitle": "マーケットダッシュボード＆ウォッチリスト。全データはMockプレースホルダーです。",
+    "placeholder": "データ準備中",
+    "refresh": "更新",
+    "mockRefreshed": "（Mock）更新完了 — 実際のデータは取得していません",
+    "indicesTitle": "指数行情",
+    "indicesPending": "保留中",
+    "indices": {
+      "shanghai": "上海総合指数",
+      "shenzhen": "深セン成分指数",
+      "chinext": "創業板指数",
+      "star50": "科創50"
+    },
+    "aStockWatchlistTitle": "A株ウォッチリスト",
+    "usStockWatchlistTitle": "米国株ウォッチリスト",
+    "watchlistEmpty": "ウォッチリストは空です",
+    "watchlistAdd": "追加",
+    "tableCode": "コード",
+    "tableName": "名称",
+    "tablePrice": "価格",
+    "tableChange": "変動",
+    "tableActions": "操作"
   }
 }

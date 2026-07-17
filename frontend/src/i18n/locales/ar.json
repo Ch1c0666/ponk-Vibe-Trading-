@@ -897,7 +897,26 @@
   "overview": {
     "badge": "نظرة عامة",
     "title": "نظرة عامة",
-    "subtitle": "عنصر نائب لنظرة عامة على السوق والأقسام.",
-    "placeholder": "البيانات قادمة قريباً"
+    "subtitle": "لوحة معلومات السوق وقائمة المراقبة. جميع البيانات Mock placeholder.",
+    "placeholder": "البيانات قادمة قريباً",
+    "refresh": "تحديث",
+    "mockRefreshed": "(Mock) اكتمل التحديث — لم يتم طلب بيانات حية",
+    "indicesTitle": "أسعار المؤشرات",
+    "indicesPending": "قيد الانتظار",
+    "indices": {
+      "shanghai": "شنغهاي المركب",
+      "shenzhen": "شنتشن المركب",
+      "chinext": "تشي نكست",
+      "star50": "STAR 50"
+    },
+    "aStockWatchlistTitle": "قائمة مراقبة الأسهم الصينية A",
+    "usStockWatchlistTitle": "قائمة مراقبة الأسهم الأمريكية",
+    "watchlistEmpty": "لا توجد مدخلات",
+    "watchlistAdd": "إضافة",
+    "tableCode": "الرمز",
+    "tableName": "الاسم",
+    "tablePrice": "السعر",
+    "tableChange": "التغير",
+    "tableActions": "الإجراءات"
   }
 }

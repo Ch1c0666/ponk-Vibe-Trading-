@@ -897,7 +897,26 @@
   "overview": {
     "badge": "Overview",
     "title": "Overview",
-    "subtitle": "Market and section overview placeholder. Sector quotes, indices, and report summaries will be added in future releases.",
-    "placeholder": "Data coming soon"
+    "subtitle": "Market dashboard & watchlist. All data is mock placeholder — live quotes will be wired in future releases.",
+    "placeholder": "Data coming soon",
+    "refresh": "Refresh",
+    "mockRefreshed": "(Mock) Refresh complete — no live data requested",
+    "indicesTitle": "Index Quotes",
+    "indicesPending": "Pending",
+    "indices": {
+      "shanghai": "SSE Composite",
+      "shenzhen": "SZSE Component",
+      "chinext": "ChiNext",
+      "star50": "STAR 50"
+    },
+    "aStockWatchlistTitle": "A-Share Watchlist",
+    "usStockWatchlistTitle": "US Stock Watchlist",
+    "watchlistEmpty": "No watchlist entries",
+    "watchlistAdd": "Add",
+    "tableCode": "Code",
+    "tableName": "Name",
+    "tablePrice": "Price",
+    "tableChange": "Change",
+    "tableActions": "Actions"
   }
 }

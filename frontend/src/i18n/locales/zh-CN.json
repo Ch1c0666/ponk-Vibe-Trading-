@@ -897,7 +897,26 @@
   "overview": {
     "badge": "总览",
     "title": "总览",
-    "subtitle": "市场与栏目总览占位。各板块行情、指数与研报汇总将在后续版本接入。",
-    "placeholder": "数据待补充"
+    "subtitle": "市场行情与自选看板。所有数据均为 Mock 占位，实际行情将在后续版本接入。",
+    "placeholder": "数据待补充",
+    "refresh": "刷新",
+    "mockRefreshed": "（Mock）刷新完成 — 未请求真实行情",
+    "indicesTitle": "指数行情",
+    "indicesPending": "待接入",
+    "indices": {
+      "shanghai": "上证综指",
+      "shenzhen": "深证成指",
+      "chinext": "创业板指",
+      "star50": "科创50"
+    },
+    "aStockWatchlistTitle": "A股自选",
+    "usStockWatchlistTitle": "美股自选",
+    "watchlistEmpty": "暂无自选标的",
+    "watchlistAdd": "添加",
+    "tableCode": "代码",
+    "tableName": "名称",
+    "tablePrice": "最新价",
+    "tableChange": "涨跌幅",
+    "tableActions": "操作"
   }
 }

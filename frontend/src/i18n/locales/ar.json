@@ -815,6 +815,20 @@
       "scoringSystem": "نظام التسجيل",
       "coreTargets": "الأهداف الأساسية",
       "targetPlaceholder": "الهدف {{n}}"
+    },
+    "structureDesc": "مخطط هيكلي ثابت لسلسلة توريد حوسبة الذكاء الاصطناعي. يوضح الطبقات: المواد/الرقاقات الأولية، والوحدات/التبريد الوسيطة، والخوادم/مزودي السحابة النهائية.",
+    "structure": {
+      "tierUpstream": "أولي",
+      "tierMidstream": "وسيط",
+      "tierDownstream": "نهائي",
+      "tierLabel": {
+        "upstream": "أولي",
+        "midstream": "وسيط",
+        "downstream": "نهائي"
+      },
+      "nodeAiServer": "خادم AI",
+      "nodeDataCenter": "مركز بيانات",
+      "nodeCloudVendor": "مزود سحابة"
     }
   }
 }

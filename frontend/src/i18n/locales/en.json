@@ -815,6 +815,20 @@
       "scoringSystem": "Scoring System",
       "coreTargets": "Core Targets",
       "targetPlaceholder": "Target {{n}}"
+    },
+    "structureDesc": "Static AI computing supply chain structure. Tiers show upstream materials/chips, midstream modules/cooling, and downstream servers/cloud vendors. All nodes are placeholder frames; company names and data will be added in future releases.",
+    "structure": {
+      "tierUpstream": "Upstream",
+      "tierMidstream": "Midstream",
+      "tierDownstream": "Downstream",
+      "tierLabel": {
+        "upstream": "Upstream",
+        "midstream": "Midstream",
+        "downstream": "Downstream"
+      },
+      "nodeAiServer": "AI Server",
+      "nodeDataCenter": "Data Center",
+      "nodeCloudVendor": "Cloud Vendor"
     }
   }
 }

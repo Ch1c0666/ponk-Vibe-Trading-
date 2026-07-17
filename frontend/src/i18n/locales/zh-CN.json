@@ -815,6 +815,20 @@
       "scoringSystem": "评分体系",
       "coreTargets": "核心标的",
       "targetPlaceholder": "标的 {{n}}"
+    },
+    "structureDesc": "AI 算力产业链静态结构图。以下展示上游材料/芯片、中游模块/散热、下游服务器/云厂商的层级关系。所有节点均为空框架占位，公司名称与数据将在后续版本补充。",
+    "structure": {
+      "tierUpstream": "上游",
+      "tierMidstream": "中游",
+      "tierDownstream": "下游",
+      "tierLabel": {
+        "upstream": "上游",
+        "midstream": "中游",
+        "downstream": "下游"
+      },
+      "nodeAiServer": "AI 服务器",
+      "nodeDataCenter": "数据中心",
+      "nodeCloudVendor": "云厂商"
     }
   }
 }

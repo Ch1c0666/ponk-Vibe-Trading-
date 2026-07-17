@@ -815,6 +815,20 @@
       "scoringSystem": "평가 체계",
       "coreTargets": "핵심 타겟",
       "targetPlaceholder": "타겟 {{n}}"
+    },
+    "structureDesc": "AI 컴퓨팅 공급망 정적 구조도. 상류 소재/칩, 중류 모듈/냉각, 하류 서버/클라우드 벤더의 계층 관계를 보여줍니다.",
+    "structure": {
+      "tierUpstream": "상류",
+      "tierMidstream": "중류",
+      "tierDownstream": "하류",
+      "tierLabel": {
+        "upstream": "상류",
+        "midstream": "중류",
+        "downstream": "하류"
+      },
+      "nodeAiServer": "AI 서버",
+      "nodeDataCenter": "데이터 센터",
+      "nodeCloudVendor": "클라우드 벤더"
     }
   }
 }

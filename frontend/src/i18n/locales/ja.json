@@ -815,6 +815,20 @@
       "scoringSystem": "評価体系",
       "coreTargets": "主要ターゲット",
       "targetPlaceholder": "ターゲット {{n}}"
+    },
+    "structureDesc": "AIコンピューティングサプライチェーンの静的構造図。上流の材料/チップ、中流のモジュール/冷却、下流のサーバー/クラウドベンダーの階層関係を示します。",
+    "structure": {
+      "tierUpstream": "上流",
+      "tierMidstream": "中流",
+      "tierDownstream": "下流",
+      "tierLabel": {
+        "upstream": "上流",
+        "midstream": "中流",
+        "downstream": "下流"
+      },
+      "nodeAiServer": "AI サーバー",
+      "nodeDataCenter": "データセンター",
+      "nodeCloudVendor": "クラウドベンダー"
     }
   }
 }

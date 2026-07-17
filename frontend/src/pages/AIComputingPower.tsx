@@ -17,6 +17,7 @@ import {
   SegmentResearchTemplate,
   type SegmentMeta,
 } from "@/components/common/SegmentResearchTemplate";
+import { SupplyChainStructure } from "@/components/common/SupplyChainStructure";
 
 // ---------------------------------------------------------------------------
 // Sub-tab definitions
@@ -106,7 +107,7 @@ export function AIComputingPower() {
           {activeTab === "overview" && <OverviewTab />}
           {activeTab === "templates" && <TemplatesTab />}
           {activeTab === "reports" && <PlaceholderTab tab="reports" />}
-          {activeTab === "structure" && <PlaceholderTab tab="structure" />}
+          {activeTab === "structure" && <StructureTab />}
         </section>
       </div>
     </div>
@@ -199,7 +200,18 @@ function TemplatesTab() {
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder tab for reports / structure
+// Structure tab — static supply chain diagram (upstream → downstream)
+// ---------------------------------------------------------------------------
+function StructureTab() {
+  return (
+    <div className="py-4">
+      <SupplyChainStructure />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder tab for reports
 // ---------------------------------------------------------------------------
 function PlaceholderTab({ tab }: { tab: string }) {
   const { t } = useTranslation();

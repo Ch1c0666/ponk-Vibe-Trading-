@@ -28,6 +28,12 @@ const AlphaZoo = lazy(() =>
 const AIComputingPower = lazy(() =>
   import("@/pages/AIComputingPower").then((m) => ({ default: m.AIComputingPower })),
 );
+const HumanoidRobot = lazy(() =>
+  import("@/pages/HumanoidRobot").then((m) => ({ default: m.HumanoidRobot })),
+);
+const OverviewPage = lazy(() =>
+  import("@/pages/Overview").then((m) => ({ default: m.Overview })),
+);
 
 function PageLoader() {
   return (
@@ -61,6 +67,9 @@ export const router = createBrowserRouter([
       { path: "/alpha-zoo/bench", element: wrap(AlphaZoo) },
       { path: "/alpha-zoo/compare", element: wrap(AlphaZoo) },
       { path: "/alpha-zoo/:alphaId", element: wrap(AlphaZoo) },
+      { path: "/overview", element: wrap(OverviewPage) },
+      { path: "/humanoid-robot", element: wrap(HumanoidRobot) },
+      { path: "/humanoid-robot/:segmentKey", element: wrap(HumanoidRobot) },
       { path: "/ai-computing", element: wrap(AIComputingPower) },
       { path: "/ai-computing/:segmentKey", element: wrap(AIComputingPower) },
     ],

@@ -22,7 +22,9 @@
     "language": "语言",
     "collapse": "收起",
     "expand": "展开",
-    "aiComputing": "AI 算力"
+    "aiComputing": "AI 算力",
+    "humanoidRobot": "人形机器人",
+    "overview": "总览"
   },
   "runtime": {
     "monitorBadge": "运行时监控",
@@ -851,5 +853,51 @@
       "invalidTitle": "环节不存在",
       "invalidDesc": "「{{key}}」不是有效的 AI 算力环节标识。请从总览页面选择已有环节进入。"
     }
+  },
+  "humanoidRobot": {
+    "badge": "人形机器人",
+    "title": "人形机器人",
+    "subtitle": "人形机器人产业链研究框架——从减速器到灵巧手，追踪特斯拉Optimus及国产人形机器人核心零部件与总成环节。",
+    "placeholder": "待补充",
+    "overviewDesc": "以下为人形机器人产业链核心环节，每个模块独立跟踪相关公司、研报与技术动态。各卡片模块为占位，详情页与数据将在后续版本补充。",
+    "tabs": {
+      "overview": "总览",
+      "templates": "研究模板",
+      "reports": "研报库",
+      "structure": "结构图"
+    },
+    "segments": {
+      "harmonicReducer": "谐波减速器",
+      "planetaryRollerScrew": "行星滚柱丝杠",
+      "framelessTorqueMotor": "无框力矩电机",
+      "sixAxisForceSensor": "六维力传感器",
+      "dexterousHand": "灵巧手",
+      "ballScrew": "滚珠丝杠"
+    },
+    "template": {
+      "positioning": "环节定位",
+      "intlLandscape": "国际竞争格局",
+      "domesticLandscape": "国内竞争格局",
+      "barrierType": "壁垒类型",
+      "scoringSystem": "评分体系",
+      "coreTargets": "核心标的",
+      "researchFramework": "研究框架",
+      "targetPlaceholder": "标的 {{n}}"
+    },
+    "templatesDesc": "选择一个环节查看其研究框架模板。所有字段均为占位状态，待后续版本填充实际数据。",
+    "structurePlaceholderTitle": "结构图",
+    "structurePlaceholderDesc": "产业链结构图即将上线，敬请期待。届时将以可视化图谱展示人形机器人产业上下游关系。",
+    "detail": {
+      "backToOverview": "返回人形机器人总览",
+      "subtitle": "环节研究详情页。以下为标准化研究框架，公司名称与数据将在后续版本补充。",
+      "invalidTitle": "环节不存在",
+      "invalidDesc": "「{{key}}」不是有效的人形机器人环节标识。请从总览页面选择已有环节进入。"
+    }
+  },
+  "overview": {
+    "badge": "总览",
+    "title": "总览",
+    "subtitle": "市场与栏目总览占位。各板块行情、指数与研报汇总将在后续版本接入。",
+    "placeholder": "数据待补充"
   }
 }

@@ -22,7 +22,9 @@
     "language": "언어",
     "collapse": "접기",
     "expand": "펼치기",
-    "aiComputing": "AI 컴퓨트"
+    "aiComputing": "AI 컴퓨트",
+    "humanoidRobot": "휴머노이드 로봇",
+    "overview": "개요"
   },
   "runtime": {
     "monitorBadge": "런타임 모니터",
@@ -851,5 +853,51 @@
       "invalidTitle": "세그먼트를 찾을 수 없음",
       "invalidDesc": "\"{{key}}\"은(는) 유효한 AI 컴퓨트 세그먼트가 아닙니다. 개요 페이지에서 기존 세그먼트를 선택하세요."
     }
+  },
+  "humanoidRobot": {
+    "badge": "휴머노이드 로봇",
+    "title": "휴머노이드 로봇",
+    "subtitle": "휴머노이드 로봇 공급망 연구 프레임워크——감속기부터 정교한 핸드까지, Tesla Optimus 및 국산 휴머노이드 로봇의 핵심 부품을 추적합니다.",
+    "placeholder": "준비 중",
+    "overviewDesc": "휴머노이드 로봇 공급망의 핵심 세그먼트입니다.",
+    "tabs": {
+      "overview": "개요",
+      "templates": "템플릿",
+      "reports": "리포트",
+      "structure": "구조"
+    },
+    "segments": {
+      "harmonicReducer": "하모닉 감속기",
+      "planetaryRollerScrew": "유성 롤러 스크류",
+      "framelessTorqueMotor": "프레임리스 모터",
+      "sixAxisForceSensor": "6축 힘 센서",
+      "dexterousHand": "정교한 핸드",
+      "ballScrew": "볼 스크류"
+    },
+    "template": {
+      "positioning": "세그먼트 포지셔닝",
+      "intlLandscape": "국제 경쟁 구도",
+      "domesticLandscape": "국내 경쟁 구도",
+      "barrierType": "진입 장벽 유형",
+      "scoringSystem": "평가 체계",
+      "coreTargets": "핵심 타겟",
+      "researchFramework": "연구 프레임워크",
+      "targetPlaceholder": "타겟 {{n}}"
+    },
+    "templatesDesc": "세그먼트를 선택하여 연구 프레임워크 템플릿을 확인하세요.",
+    "structurePlaceholderTitle": "구조도",
+    "structurePlaceholderDesc": "공급망 구조도가 곧 제공될 예정입니다.",
+    "detail": {
+      "backToOverview": "휴머노이드 로봇 개요로 돌아가기",
+      "subtitle": "세그먼트 연구 상세 페이지입니다.",
+      "invalidTitle": "세그먼트를 찾을 수 없음",
+      "invalidDesc": "\"{{key}}\"은(는) 유효한 휴머노이드 로봇 세그먼트가 아닙니다."
+    }
+  },
+  "overview": {
+    "badge": "개요",
+    "title": "개요",
+    "subtitle": "시장 및 섹션 개요 플레이스홀더.",
+    "placeholder": "데이터 준비 중"
   }
 }

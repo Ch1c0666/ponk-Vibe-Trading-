@@ -22,7 +22,9 @@
     "language": "言語",
     "collapse": "折りたたむ",
     "expand": "展開",
-    "aiComputing": "AI コンピュート"
+    "aiComputing": "AI コンピュート",
+    "humanoidRobot": "人型ロボット",
+    "overview": "概要"
   },
   "runtime": {
     "monitorBadge": "ランタイムモニター",
@@ -851,5 +853,51 @@
       "invalidTitle": "セグメントが見つかりません",
       "invalidDesc": "「{{key}}」は有効なAIコンピュートセグメントではありません。概要ページから既存のセグメントを選択してください。"
     }
+  },
+  "humanoidRobot": {
+    "badge": "人型ロボット",
+    "title": "人型ロボット",
+    "subtitle": "人型ロボットサプライチェーン研究フレームワーク——減速機から器用なハンドまで、Tesla Optimusおよび国産人型ロボットの中核部品を追跡。",
+    "placeholder": "準備中",
+    "overviewDesc": "人型ロボットサプライチェーンのコアセグメント。各モジュールは関連企業、研究レポート、技術動向を独立して追跡します。",
+    "tabs": {
+      "overview": "概要",
+      "templates": "テンプレート",
+      "reports": "レポート",
+      "structure": "構造"
+    },
+    "segments": {
+      "harmonicReducer": "波動減速機",
+      "planetaryRollerScrew": "遊星ローラねじ",
+      "framelessTorqueMotor": "フレームレスモータ",
+      "sixAxisForceSensor": "6軸力覚センサ",
+      "dexterousHand": "器用ハンド",
+      "ballScrew": "ボールねじ"
+    },
+    "template": {
+      "positioning": "セグメントポジショニング",
+      "intlLandscape": "国際競争環境",
+      "domesticLandscape": "国内競争環境",
+      "barrierType": "参入障壁タイプ",
+      "scoringSystem": "評価体系",
+      "coreTargets": "主要ターゲット",
+      "researchFramework": "研究フレームワーク",
+      "targetPlaceholder": "ターゲット {{n}}"
+    },
+    "templatesDesc": "セグメントを選択して研究フレームワークテンプレートを表示します。",
+    "structurePlaceholderTitle": "構造図",
+    "structurePlaceholderDesc": "サプライチェーン構造図は近日公開予定です。",
+    "detail": {
+      "backToOverview": "人型ロボット概要に戻る",
+      "subtitle": "セグメント研究詳細ページ。以下に標準研究フレームワークを表示します。",
+      "invalidTitle": "セグメントが見つかりません",
+      "invalidDesc": "「{{key}}」は有効な人型ロボットセグメントではありません。"
+    }
+  },
+  "overview": {
+    "badge": "概要",
+    "title": "概要",
+    "subtitle": "市場・セクション概要プレースホルダー。",
+    "placeholder": "データ準備中"
   }
 }

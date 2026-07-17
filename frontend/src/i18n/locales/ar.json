@@ -22,7 +22,9 @@
     "language": "اللغة",
     "collapse": "طي",
     "expand": "توسيع",
-    "aiComputing": "حوسبة الذكاء الاصطناعي"
+    "aiComputing": "حوسبة الذكاء الاصطناعي",
+    "humanoidRobot": "روبوت بشري",
+    "overview": "نظرة عامة"
   },
   "runtime": {
     "monitorBadge": "مراقب وقت التشغيل",
@@ -851,5 +853,51 @@
       "invalidTitle": "القطاع غير موجود",
       "invalidDesc": "\"{{key}}\" ليس قطاع حوسبة ذكاء اصطناعي معروف. يرجى اختيار قطاع موجود من النظرة العامة."
     }
+  },
+  "humanoidRobot": {
+    "badge": "روبوت بشري",
+    "title": "روبوت بشري",
+    "subtitle": "إطار بحث سلسلة توريد الروبوت البشري——تتبع المخفضات إلى الأيدي الماهرة، والمكونات الأساسية لـ Tesla Optimus والروبوتات البشرية المحلية.",
+    "placeholder": "قريباً",
+    "overviewDesc": "القطاعات الأساسية لسلسلة توريد الروبوت البشري.",
+    "tabs": {
+      "overview": "نظرة عامة",
+      "templates": "القوالب",
+      "reports": "التقارير",
+      "structure": "الهيكل"
+    },
+    "segments": {
+      "harmonicReducer": "مخفض توافقي",
+      "planetaryRollerScrew": "لولب كوكبي",
+      "framelessTorqueMotor": "محرك بدون إطار",
+      "sixAxisForceSensor": "مستشعر قوة 6 محاور",
+      "dexterousHand": "يد بارعة",
+      "ballScrew": "لولب كروي"
+    },
+    "template": {
+      "positioning": "تحديد موقع القطاع",
+      "intlLandscape": "المشهد التنافسي الدولي",
+      "domesticLandscape": "المشهد التنافسي المحلي",
+      "barrierType": "نوع الحاجز",
+      "scoringSystem": "نظام التسجيل",
+      "coreTargets": "الأهداف الأساسية",
+      "researchFramework": "إطار البحث",
+      "targetPlaceholder": "الهدف {{n}}"
+    },
+    "templatesDesc": "اختر قطاعاً لعرض قالب إطار البحث الخاص به.",
+    "structurePlaceholderTitle": "مخطط الهيكل",
+    "structurePlaceholderDesc": "مخطط هيكل سلسلة التوريد قادم قريباً.",
+    "detail": {
+      "backToOverview": "العودة إلى نظرة عامة الروبوت البشري",
+      "subtitle": "صفحة تفاصيل بحث القطاع.",
+      "invalidTitle": "القطاع غير موجود",
+      "invalidDesc": "\"{{key}}\" ليس قطاع روبوت بشري معروف."
+    }
+  },
+  "overview": {
+    "badge": "نظرة عامة",
+    "title": "نظرة عامة",
+    "subtitle": "عنصر نائب لنظرة عامة على السوق والأقسام.",
+    "placeholder": "البيانات قادمة قريباً"
   }
 }

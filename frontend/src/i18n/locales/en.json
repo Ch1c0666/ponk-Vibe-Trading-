@@ -27,7 +27,9 @@
     "language": "Language",
     "collapse": "Collapse",
     "expand": "Expand",
-    "aiComputing": "AI Compute"
+    "aiComputing": "AI Compute",
+    "humanoidRobot": "Humanoid Robot",
+    "overview": "Overview"
   },
   "runtime": {
     "monitorBadge": "Runtime Monitor",
@@ -851,5 +853,51 @@
       "invalidTitle": "Segment not found",
       "invalidDesc": "\"{{key}}\" is not a recognised AI compute segment. Please select an existing segment from the overview."
     }
+  },
+  "humanoidRobot": {
+    "badge": "Humanoid Robot",
+    "title": "Humanoid Robot",
+    "subtitle": "Humanoid robot supply chain research framework — tracking core components from reducers to dexterous hands that underpin Tesla Optimus and domestic humanoid robot production.",
+    "placeholder": "Coming soon",
+    "overviewDesc": "Core segments of the humanoid robot supply chain. Each module independently tracks related companies, research reports, and technology trends.",
+    "tabs": {
+      "overview": "Overview",
+      "templates": "Templates",
+      "reports": "Reports",
+      "structure": "Structure"
+    },
+    "segments": {
+      "harmonicReducer": "Harmonic Reducer",
+      "planetaryRollerScrew": "Planetary Roller Screw",
+      "framelessTorqueMotor": "Frameless Torque Motor",
+      "sixAxisForceSensor": "6-Axis Force Sensor",
+      "dexterousHand": "Dexterous Hand",
+      "ballScrew": "Ball Screw"
+    },
+    "template": {
+      "positioning": "Segment Positioning",
+      "intlLandscape": "International Landscape",
+      "domesticLandscape": "Domestic Landscape",
+      "barrierType": "Barrier Type",
+      "scoringSystem": "Scoring System",
+      "coreTargets": "Core Targets",
+      "researchFramework": "Research Framework",
+      "targetPlaceholder": "Target {{n}}"
+    },
+    "templatesDesc": "Select a segment to view its research framework template. All fields are placeholder state.",
+    "structurePlaceholderTitle": "Structure Chart",
+    "structurePlaceholderDesc": "Supply chain structure chart coming soon. Visual mapping of upstream-downstream relationships across the humanoid robot industry.",
+    "detail": {
+      "backToOverview": "Back to Humanoid Robot overview",
+      "subtitle": "Segment research detail page. The standardised research framework is shown below.",
+      "invalidTitle": "Segment not found",
+      "invalidDesc": "\"{{key}}\" is not a recognised humanoid robot segment. Please select an existing segment from the overview."
+    }
+  },
+  "overview": {
+    "badge": "Overview",
+    "title": "Overview",
+    "subtitle": "Market and section overview placeholder. Sector quotes, indices, and report summaries will be added in future releases.",
+    "placeholder": "Data coming soon"
   }
 }

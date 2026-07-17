@@ -32,6 +32,7 @@ export interface ReportWarning {
   code: string;
   message: string;
   page: number;
+  sourceCode?: string;
 }
 
 export type ReportLibraryView =

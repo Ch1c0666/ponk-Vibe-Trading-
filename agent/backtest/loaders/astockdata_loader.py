@@ -4,7 +4,7 @@ Implements selected public-data patterns inspired by a-stock-data inside
 Vibe-Trading's own DataLoader protocol. The repository code and its tested
 contracts are authoritative.
 
-OHLCV layer: Tencent ifzq HTTP API (never blocked).
+OHLCV layer: Tencent ifzq HTTP API (public no-auth endpoint; callers should treat it as rate-limitable).
 Extended layers: Eastmoney APIs (reportapi / push2 / push2ex / datacenter-web /
 search-api-web / np-weblist). The standardized research-report API uses the
 repository's shared ``eastmoney_client`` adapter; this module's historical raw
@@ -92,24 +92,34 @@ def em_get(
 # Tencent quote helper — a-stock-data §1.2
 # ---------------------------------------------------------------------------
 def tencent_quote(codes: List[str]) -> Dict[str, Dict[str, Any]]:
-    """Batch-fetch real-time quotes from Tencent Finance (never IP-banned).
+    """Batch-fetch real-time quotes from Tencent Finance (public no-auth endpoint).
 
     Args:
-        codes: List of 6-digit codes (SH/SZ/BJ).
+        codes: Stock codes (e.g. ``"600519.SH"``, ``"000001"``) or
+            pre-formatted Tencent index codes (``"sh000001"``).
 
     Returns:
         {code: {name, price, pe_ttm, pb, mcap_yi, float_mcap_yi, turnover_pct,
                 change_pct, open, high, low, prev_close, volume}}
     """
+    import re as _re
+
+    _TC_CODE_RE = _re.compile(r"^(sh|sz|bj)\d{6}$", _re.IGNORECASE)
+
     tc_codes = []
     for c in codes:
-        c = c.upper().replace(".SH", "").replace(".SZ", "").replace(".BJ", "")
-        if c.startswith(("60", "68", "5", "9")):
-            tc_codes.append(f"sh{c}")
-        elif c.startswith(("8", "4")):
-            tc_codes.append(f"bj{c}")
+        c_upper = c.upper()
+        # If already a valid Tencent code (e.g. sh000001), use as-is.
+        if _TC_CODE_RE.match(c_upper):
+            tc_codes.append(c_upper.lower())
+            continue
+        c_stripped = c_upper.replace(".SH", "").replace(".SZ", "").replace(".BJ", "")
+        if c_stripped.startswith(("60", "68", "5", "9")):
+            tc_codes.append(f"sh{c_stripped}")
+        elif c_stripped.startswith(("8", "4")):
+            tc_codes.append(f"bj{c_stripped}")
         else:
-            tc_codes.append(f"sz{c}")
+            tc_codes.append(f"sz{c_stripped}")
 
     url = f"{_TENCENT_QUOTE_URL}{','.join(tc_codes)}"
     resp = requests.get(url, headers={"User-Agent": UA}, timeout=10)
@@ -619,7 +629,7 @@ def eastmoney_stock_info(code: str) -> Optional[Dict[str, Any]]:
 class DataLoader:
     """a-stock-data unified A-share data loader.
 
-    OHLCV data: Tencent ifzq HTTP API (primary, never IP-banned).
+    OHLCV data: Tencent ifzq HTTP API (primary, public no-auth endpoint).
     Extended data: Eastmoney HTTP APIs (throttled, for exclusive datasets).
 
     Implements the DataLoaderProtocol for Vibe-Trading backtest compatibility

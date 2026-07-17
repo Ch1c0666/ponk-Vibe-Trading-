@@ -248,3 +248,128 @@ class ResearchReportsMCPForwardingTests(TestCase):
         """``_patch_research_reports_schema`` must be importable and callable."""
         self.assertTrue(hasattr(mcp_server, "_patch_research_reports_schema"))
         self.assertTrue(callable(mcp_server._patch_research_reports_schema))
+
+
+# ---------------------------------------------------------------------------
+# get_index_quotes — discovery in build_registry + MCP list_tools
+# ---------------------------------------------------------------------------
+
+
+class IndexQuoteDiscoveryTests(TestCase):
+    """Verify that the new ``get_index_quotes`` tool is wired end-to-end."""
+
+    def _require_socket(self) -> None:
+        if not _socket_available():
+            self.skipTest("requires local socket (--disable-socket blocks asyncio.run())")
+
+    # -- registry seam --------------------------------------------------------
+
+    def test_build_registry_discovers_get_index_quotes(self) -> None:
+        from src.tools import build_registry
+
+        registry = build_registry(include_shell_tools=False)
+        tool = registry.get("get_index_quotes")
+        self.assertIsNotNone(
+            tool,
+            "get_index_quotes must be discoverable by build_registry()",
+        )
+        self.assertEqual(tool.name, "get_index_quotes")
+
+    def test_registry_forwarding_accepts_all_four_default(self) -> None:
+        """When indices is omitted, the registry call defaults to all 4."""
+        registry = _RecordingRegistry()
+        with patch.object(mcp_server, "_get_registry", return_value=registry):
+            result = mcp_server.get_index_quotes()
+
+        self.assertEqual(len(registry.calls), 1)
+        name, params = registry.calls[0]
+        self.assertEqual(name, "get_index_quotes")
+        self.assertEqual(params, {})
+
+    def test_registry_forwarding_accepts_explicit_subset(self) -> None:
+        registry = _RecordingRegistry()
+        with patch.object(mcp_server, "_get_registry", return_value=registry):
+            mcp_server.get_index_quotes(indices=["sh000001", "sz399006"])
+
+        _, params = registry.calls[0]
+        self.assertEqual(params, {"indices": ["sh000001", "sz399006"]})
+
+    # -- MCP tool listing (real FastMCP stack, no socket) --------------------
+
+    def test_mcp_tool_list_contains_get_index_quotes(self) -> None:
+        self._require_socket()
+
+        async def _list() -> list:
+            tools = await mcp_server.mcp.list_tools()
+            return [t.name for t in tools]
+
+        tool_names = asyncio.run(_list())
+        self.assertIn("get_index_quotes", tool_names)
+
+    def test_mcp_call_tool_all_four_indices_returns_json_envelope(self) -> None:
+        """Smoke test through the real FastMCP stack (mocked provider)."""
+        self._require_socket()
+
+        raw = {
+            "000001": {
+                "name": "上证综指",
+                "price": 3500.0,
+                "prev_close": 3480.0,
+                "open": 3475.0,
+                "high": 3510.0,
+                "low": 3460.0,
+                "change_pct": 0.57,
+            },
+            "399001": {
+                "name": "深证成指",
+                "price": 10800.0,
+                "prev_close": 10750.0,
+                "open": 10760.0,
+                "high": 10850.0,
+                "low": 10700.0,
+                "change_pct": -0.15,
+            },
+            "399006": {
+                "name": "创业板指",
+                "price": 2150.0,
+                "prev_close": 2130.0,
+                "open": 2135.0,
+                "high": 2160.0,
+                "low": 2120.0,
+                "change_pct": 1.20,
+            },
+            "000688": {
+                "name": "科创50",
+                "price": 980.0,
+                "prev_close": 985.0,
+                "open": 983.0,
+                "high": 990.0,
+                "low": 975.0,
+                "change_pct": -0.80,
+            },
+        }
+
+        with patch(
+            "src.tools.index_quote_tool.tencent_quote",
+            return_value=raw,
+        ):
+            result = asyncio.run(
+                mcp_server.mcp.call_tool(
+                    "get_index_quotes",
+                    arguments={"indices": ["sh000001", "sz399001", "sz399006", "sh000688"]},
+                )
+            )
+
+        payload = _parse_envelope(result)
+        self.assertTrue(payload["ok"], f"Expected ok=true, got {payload}")
+        self.assertEqual(payload["source"], "tencent")
+        self.assertEqual(len(payload["data"]["quotes"]), 4)
+        self.assertFalse(payload["data"]["partial"])
+
+    def test_get_index_quotes_function_is_importable(self) -> None:
+        """The MCP wrapper function must exist on the module."""
+        self.assertTrue(
+            hasattr(mcp_server, "get_index_quotes"),
+            "mcp_server.get_index_quotes must be defined",
+        )
+        self.assertTrue(callable(mcp_server.get_index_quotes))

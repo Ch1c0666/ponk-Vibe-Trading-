@@ -1325,6 +1325,32 @@ def get_research_reports(
 
 
 @mcp.tool
+def get_index_quotes(
+    indices: list[str] | None = None,
+) -> str:
+    """Fetch real-time quotes for A-share benchmark indices (public, no-auth).
+
+    Returns the current level, change percent, open, high, low, and previous
+    close for the four major mainland China equity benchmarks: 上证综指
+    (sh000001), 深证成指 (sz399001), 创业板指 (sz399006), 科创50 (sh000688).
+    Data source: Tencent Finance (public no-auth HTTP endpoint).
+
+    Individual stock codes are NOT accepted — only the four curated
+    index codes.  Partial failures return ``partial:true`` with per-index
+    warnings; all-four failure returns ``ok:false``.
+
+    Args:
+        indices: Optional subset of the four allowed index codes.  Defaults to
+            all four when omitted.
+    """
+    params: dict[str, Any] = {}
+    if indices is not None:
+        params["indices"] = indices
+    registry = _get_registry()
+    return registry.execute("get_index_quotes", params)
+
+
+@mcp.tool
 def get_stock_news(code: str | None = None, scope: str = "stock", limit: int = 20) -> str:
     """Fetch recent financial news headlines, read-only and no auth.
 

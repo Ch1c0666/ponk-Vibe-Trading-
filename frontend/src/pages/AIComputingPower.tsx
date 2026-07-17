@@ -18,6 +18,7 @@ import {
   type SegmentMeta,
 } from "@/components/common/SegmentResearchTemplate";
 import { SupplyChainStructure } from "@/components/common/SupplyChainStructure";
+import { ReportLibrary } from "@/components/common/ReportLibrary";
 
 // ---------------------------------------------------------------------------
 // Sub-tab definitions
@@ -106,7 +107,7 @@ export function AIComputingPower() {
         <section className="min-h-[50vh]">
           {activeTab === "overview" && <OverviewTab />}
           {activeTab === "templates" && <TemplatesTab />}
-          {activeTab === "reports" && <PlaceholderTab tab="reports" />}
+          {activeTab === "reports" && <ReportLibrary />}
           {activeTab === "structure" && <StructureTab />}
         </section>
       </div>
@@ -206,27 +207,6 @@ function StructureTab() {
   return (
     <div className="py-4">
       <SupplyChainStructure />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Placeholder tab for reports
-// ---------------------------------------------------------------------------
-function PlaceholderTab({ tab }: { tab: string }) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-        <FileText className="h-8 w-8 text-muted-foreground" />
-      </div>
-      <h2 className="mt-4 text-lg font-medium">
-        {t(`aiComputing.${tab}PlaceholderTitle` as any)}
-      </h2>
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">
-        {t(`aiComputing.${tab}PlaceholderDesc` as any)}
-      </p>
     </div>
   );
 }

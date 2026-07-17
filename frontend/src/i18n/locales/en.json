@@ -829,6 +829,16 @@
       "nodeAiServer": "AI Server",
       "nodeDataCenter": "Data Center",
       "nodeCloudVendor": "Cloud Vendor"
+    },
+    "reportsDesc": "AI computing supply chain research report library. Filter and sort by segment, brokerage, and date. This is a placeholder shell; report content will be added once data ingestion is wired up.",
+    "reports": {
+      "searchPlaceholder": "Search report titles…",
+      "filterSegment": "Filter segment",
+      "filterDate": "Date range",
+      "sort": "Sort",
+      "count": "{{total}} total, {{shown}} shown",
+      "emptyTitle": "No reports yet",
+      "emptyDesc": "Report data has not been ingested. Once the brokerage report feed is connected, AI computing research reports will appear here, searchable by title, brokerage, and date."
     }
   }
 }

@@ -829,6 +829,16 @@
       "nodeAiServer": "AI サーバー",
       "nodeDataCenter": "データセンター",
       "nodeCloudVendor": "クラウドベンダー"
+    },
+    "reportsDesc": "AIコンピューティングサプライチェーン調査レポートライブラリ。セグメント、証券会社、日付でフィルタリングと並べ替えが可能です。現在はプレースホルダーシェルです。",
+    "reports": {
+      "searchPlaceholder": "レポートタイトルを検索…",
+      "filterSegment": "セグメントフィルター",
+      "filterDate": "日付範囲",
+      "sort": "並べ替え",
+      "count": "全 {{total}} 件、{{shown}} 件表示",
+      "emptyTitle": "レポートはまだありません",
+      "emptyDesc": "レポートデータはまだ取り込まれていません。証券会社のレポートフィードが接続され次第、AIコンピューティング関連の調査レポートがここに表示されます。"
     }
   }
 }

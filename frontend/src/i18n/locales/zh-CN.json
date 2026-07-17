@@ -829,6 +829,16 @@
       "nodeAiServer": "AI 服务器",
       "nodeDataCenter": "数据中心",
       "nodeCloudVendor": "云厂商"
+    },
+    "reportsDesc": "AI 算力产业链研报库。支持按环节、券商、日期筛选与排序。当前为占位框架，研报内容将在数据接入后补充。",
+    "reports": {
+      "searchPlaceholder": "搜索研报标题…",
+      "filterSegment": "环节筛选",
+      "filterDate": "日期范围",
+      "sort": "排序",
+      "count": "共 {{total}} 篇，显示 {{shown}} 篇",
+      "emptyTitle": "暂无研报",
+      "emptyDesc": "研报数据尚未接入。待券商研报推送链路就绪后，此处将展示各环节 AI 算力相关研报，支持按标题、券商、日期检索。"
     }
   }
 }

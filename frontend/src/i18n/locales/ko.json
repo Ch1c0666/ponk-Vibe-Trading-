@@ -829,6 +829,16 @@
       "nodeAiServer": "AI 서버",
       "nodeDataCenter": "데이터 센터",
       "nodeCloudVendor": "클라우드 벤더"
+    },
+    "reportsDesc": "AI 컴퓨팅 공급망 연구 보고서 라이브러리. 세그먼트, 증권사, 날짜별로 필터링 및 정렬할 수 있습니다. 현재는 플레이스홀더 셸입니다.",
+    "reports": {
+      "searchPlaceholder": "보고서 제목 검색…",
+      "filterSegment": "세그먼트 필터",
+      "filterDate": "날짜 범위",
+      "sort": "정렬",
+      "count": "총 {{total}}건, {{shown}}건 표시",
+      "emptyTitle": "아직 보고서 없음",
+      "emptyDesc": "보고서 데이터가 아직 수집되지 않았습니다. 증권사 보고서 피드가 연결되면 AI 컴퓨팅 관련 연구 보고서가 여기에 표시됩니다."
     }
   }
 }

@@ -12,6 +12,10 @@ export interface ReportLibraryQuery {
   fromDate?: string;
   toDate?: string;
   sort?: "date_desc" | "date_asc";
+  /** Stock codes to query in real mode (q_type=0 aggregation, NOT industry). */
+  codes?: string[];
+  /** Per-code report limit in real mode (default 20, max 50). */
+  limit?: number;
 }
 
 /** A non-fatal warning from the provider layer. */

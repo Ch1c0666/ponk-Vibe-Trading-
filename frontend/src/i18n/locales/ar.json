@@ -816,7 +816,10 @@
       "barrierType": "نوع الحاجز",
       "scoringSystem": "نظام التسجيل",
       "coreTargets": "الأهداف الأساسية",
-      "targetPlaceholder": "الهدف {{n}}"
+      "targetPlaceholder": "الهدف {{n}}",
+      "reviewedQuoteLabel": "سعر السهم المراجع",
+      "reviewedQuoteLoad": "تحميل السعر",
+      "reviewedQuoteDisclaimer": "لأغراض بحث سلسلة التوريد فقط. ليست نصيحة استثمارية."
     },
     "structureDesc": "مخطط هيكلي ثابت لسلسلة توريد حوسبة الذكاء الاصطناعي. يوضح الطبقات: المواد/الرقاقات الأولية، والوحدات/التبريد الوسيطة، والخوادم/مزودي السحابة النهائية.",
     "structure": {

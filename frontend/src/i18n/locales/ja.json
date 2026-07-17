@@ -816,7 +816,10 @@
       "barrierType": "参入障壁タイプ",
       "scoringSystem": "評価体系",
       "coreTargets": "主要ターゲット",
-      "targetPlaceholder": "ターゲット {{n}}"
+      "targetPlaceholder": "ターゲット {{n}}",
+      "reviewedQuoteLabel": "審査済み銘柄相場",
+      "reviewedQuoteLoad": "相場を読み込む",
+      "reviewedQuoteDisclaimer": "サプライチェーン研究目的のみ。投資助言ではありません。"
     },
     "structureDesc": "AIコンピューティングサプライチェーンの静的構造図。上流の材料/チップ、中流のモジュール/冷却、下流のサーバー/クラウドベンダーの階層関係を示します。",
     "structure": {

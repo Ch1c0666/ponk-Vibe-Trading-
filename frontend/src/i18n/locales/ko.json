@@ -816,7 +816,10 @@
       "barrierType": "진입 장벽 유형",
       "scoringSystem": "평가 체계",
       "coreTargets": "핵심 타겟",
-      "targetPlaceholder": "타겟 {{n}}"
+      "targetPlaceholder": "타겟 {{n}}",
+      "reviewedQuoteLabel": "검토된 종목 시세",
+      "reviewedQuoteLoad": "시세 불러오기",
+      "reviewedQuoteDisclaimer": "공급망 연구 목적으로만 사용. 투자 조언이 아닙니다."
     },
     "structureDesc": "AI 컴퓨팅 공급망 정적 구조도. 상류 소재/칩, 중류 모듈/냉각, 하류 서버/클라우드 벤더의 계층 관계를 보여줍니다.",
     "structure": {

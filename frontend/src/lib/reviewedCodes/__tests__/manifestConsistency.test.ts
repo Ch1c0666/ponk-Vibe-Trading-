@@ -137,3 +137,49 @@ describe("manifest ↔ segmentCodeMap consistency", () => {
     expect(total).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// REVIEWED_SEGMENT_CODES ↔ manifest consistency
+// ---------------------------------------------------------------------------
+
+import { REVIEWED_SEGMENT_CODES } from "../reviewedSegmentCodes";
+import { getQuoteCodes, getReportCodes } from "../reviewedManifestAdapter";
+
+describe("REVIEWED_SEGMENT_CODES vs manifest", () => {
+  let manifest: ManifestData | null = null;
+
+  try {
+    manifest = loadManifest();
+  } catch {
+    it.skip("manifest not found", () => {});
+  }
+
+  it("REVIEWED_SEGMENT_CODES mirrors manifest content", () => {
+    if (!manifest) return;
+    // Compare approved codes per scope/segment
+    for (const scope of Object.keys(manifest.segments)) {
+      for (const segKey of Object.keys(manifest.segments[scope])) {
+        const mCodes = (manifest.segments[scope][segKey]?.codes ?? [])
+          .filter((c) => c.status === "approved");
+        const fCodes = (REVIEWED_SEGMENT_CODES.segments as Record<string, Record<string, {codes: typeof mCodes}>>)[scope]?.[segKey]?.codes ?? [];
+        expect(fCodes).toEqual(mCodes);
+      }
+    }
+  });
+
+  it("getQuoteCodes returns 688041.SH for computeChip", () => {
+    expect(getQuoteCodes(REVIEWED_SEGMENT_CODES, "aiComputing", "computeChip"))
+      .toEqual(["688041.SH"]);
+  });
+
+  it("getReportCodes returns empty for computeChip", () => {
+    expect(getReportCodes(REVIEWED_SEGMENT_CODES, "aiComputing", "computeChip"))
+      .toEqual([]);
+  });
+
+  it("humanoidRobot quote codes all empty", () => {
+    for (const key of ["harmonicReducer", "planetaryRollerScrew", "framelessTorqueMotor", "sixAxisForceSensor", "dexterousHand", "ballScrew"]) {
+      expect(getQuoteCodes(REVIEWED_SEGMENT_CODES, "humanoidRobot", key)).toEqual([]);
+    }
+  });
+});

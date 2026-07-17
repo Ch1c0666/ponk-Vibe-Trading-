@@ -24,6 +24,12 @@ import { ReportLibrary, type ReportLibraryView } from "@/components/common/Repor
 import { loadReportLibrary } from "@/lib/aiComputing/reportLibraryService";
 import { toReportLibraryView } from "@/lib/aiComputing/reportLibraryAdapter";
 import { segmentCodeMap, type AiComputingSegmentKey } from "@/lib/aiComputing/segmentCodeMap";
+import {
+  loadStockQuote,
+  type StockQuoteEnvelope,
+} from "@/lib/reviewedCodes/stockQuoteService";
+import { getQuoteCodes } from "@/lib/reviewedCodes/reviewedManifestAdapter";
+import { REVIEWED_SEGMENT_CODES } from "@/lib/reviewedCodes/reviewedSegmentCodes";
 
 // ---------------------------------------------------------------------------
 // Sub-tab definitions
@@ -148,6 +154,22 @@ function TabLayout() {
 // ---------------------------------------------------------------------------
 function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
   const { t } = useTranslation();
+  const [quoteEnv, setQuoteEnv] = useState<StockQuoteEnvelope | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+
+  const reviewedQuoteCodes = getQuoteCodes(
+    REVIEWED_SEGMENT_CODES,
+    "aiComputing",
+    segment.key,
+  );
+
+  const handleLoadQuote = async () => {
+    if (reviewedQuoteCodes.length === 0) return;
+    setQuoteLoading(true);
+    const env = await loadStockQuote(reviewedQuoteCodes[0], { mode: "real" });
+    setQuoteEnv(env);
+    setQuoteLoading(false);
+  };
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
@@ -176,6 +198,51 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
             </p>
           </div>
         </section>
+
+        {/* Reviewed quote card — only when reviewed codes exist */}
+        {reviewedQuoteCodes.length > 0 && (
+          <section className="rounded-lg border bg-card p-5">
+            <h3 className="text-sm font-semibold mb-3">
+              {t("aiComputing.template.reviewedQuoteLabel")}
+            </h3>
+
+            {!quoteEnv || quoteLoading ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  {reviewedQuoteCodes[0]} — {t("aiComputing.template.reviewedQuoteLoad")}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleLoadQuote}
+                  disabled={quoteLoading}
+                  className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted/50 disabled:opacity-50"
+                >
+                  {quoteLoading ? "..." : t("aiComputing.template.reviewedQuoteLoad")}
+                </button>
+              </div>
+            ) : quoteEnv.ok && quoteEnv.data ? (
+              <div className="space-y-1.5">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-semibold">{quoteEnv.data.name ?? reviewedQuoteCodes[0]}</span>
+                  <span className="text-xs text-muted-foreground">{quoteEnv.code}</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold tabular-nums">{quoteEnv.data.price?.toFixed(2)}</span>
+                  {quoteEnv.data.change_pct != null && (
+                    <span className={quoteEnv.data.change_pct >= 0 ? "text-emerald-600 text-xs" : "text-red-600 text-xs"}>
+                      {quoteEnv.data.change_pct >= 0 ? "+" : ""}{quoteEnv.data.change_pct.toFixed(2)}%
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("aiComputing.template.reviewedQuoteDisclaimer")}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">{quoteEnv.error ?? "Failed to load"}</p>
+            )}
+          </section>
+        )}
 
         {/* 6-section research framework */}
         <SegmentResearchTemplate segment={segment} />

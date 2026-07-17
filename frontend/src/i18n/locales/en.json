@@ -816,7 +816,10 @@
       "barrierType": "Barrier Type",
       "scoringSystem": "Scoring System",
       "coreTargets": "Core Targets",
-      "targetPlaceholder": "Target {{n}}"
+      "targetPlaceholder": "Target {{n}}",
+      "reviewedQuoteLabel": "Reviewed Stock Quote",
+      "reviewedQuoteLoad": "Load Quote",
+      "reviewedQuoteDisclaimer": "For supply chain research only. Not investment advice."
     },
     "structureDesc": "Static AI computing supply chain structure. Tiers show upstream materials/chips, midstream modules/cooling, and downstream servers/cloud vendors. All nodes are placeholder frames; company names and data will be added in future releases.",
     "structure": {

@@ -185,4 +185,68 @@ describe("AIComputingPower page", () => {
     act(() => screen.getByRole("button", { name: "Reports" }).click());
     expect(document.body.textContent).not.toMatch(/\b\d{6}\.(SH|SZ|BJ)\b/i);
   });
+
+  // -- Quote card on computeChip detail page -------------------------------
+
+  it("computeChip detail shows Reviewed Stock Quote section", () => {
+    renderAt("/ai-computing/computeChip");
+    expect(screen.getByText("Reviewed Stock Quote")).toBeInTheDocument();
+    // The code and button label are in the same text node: "688041.SH — Load Quote"
+    expect(screen.getByText(/688041\.SH/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Load Quote" })).toBeInTheDocument();
+  });
+
+  it("computeChip detail does NOT fetch on mount", () => {
+    const spy = vi.spyOn(globalThis, "fetch");
+    renderAt("/ai-computing/computeChip");
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it("clicking Load Quote fetches /api/stocks/quote only", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, source: "tencent", code: "688041.SH", data: { name: "X", price: 304.88, change_pct: -4.84 } }),
+    } as Response);
+
+    renderAt("/ai-computing/computeChip");
+    await act(() => screen.getByRole("button", { name: "Load Quote" }).click());
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const url = spy.mock.calls[0][0] as string;
+    expect(url).toBe("/api/stocks/quote?code=688041.SH");
+    expect(url).not.toContain("/api/reports/research");
+    expect(url).not.toContain("/mcp");
+    spy.mockRestore();
+  });
+
+  it("clicking Load Quote shows price and disclaimer", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, source: "tencent", code: "688041.SH", data: { name: "X", price: 304.88, change_pct: -4.84 } }),
+    } as Response);
+
+    renderAt("/ai-computing/computeChip");
+    await act(() => screen.getByRole("button", { name: "Load Quote" }).click());
+
+    expect(screen.getByText("304.88")).toBeInTheDocument();
+    expect(screen.getByText("-4.84%")).toBeInTheDocument();
+    expect(screen.getByText("For supply chain research only. Not investment advice.")).toBeInTheDocument();
+    spy.mockRestore();
+  });
+
+  it("hbm detail does NOT show Reviewed Stock Quote section", () => {
+    renderAt("/ai-computing/hbm");
+    expect(screen.queryByText("Reviewed Stock Quote")).toBeNull();
+    expect(screen.queryByText(/688041/)).toBeNull();
+  });
+
+  it("reports tab still passes empty codes", () => {
+    renderAt("/ai-computing");
+    act(() => screen.getByRole("button", { name: "Reports" }).click());
+    expect(mockLoadReportLibrary).toHaveBeenCalledWith(
+      expect.objectContaining({ codes: [] }),
+      { mode: "real" },
+    );
+  });
 });

@@ -60,6 +60,9 @@ if str(AGENT_DIR) not in sys.path:
     sys.path.insert(0, str(AGENT_DIR))
 
 from fastmcp import Context, FastMCP
+from backtest.loaders.research_reports import (
+    RESEARCH_REPORT_INPUT_SCHEMA,
+)
 from cli._version import __version__ as APP_VERSION
 from src.market_data import (
     DEFAULT_MAX_ROWS,
@@ -1294,20 +1297,31 @@ def get_sector_info(code: str | None = None, mode: str = "membership", limit: in
 
 
 @mcp.tool
-def get_research_reports(code: str, limit: int = 20) -> str:
+def get_research_reports(
+    code: str | None = None,
+    limit: int = 20,
+    q_type: int = 0,
+) -> str:
     """Fetch mainland A-share sell-side research coverage and consensus forecasts.
 
-    Returns recent broker research reports (title, brokerage, analyst, publish
-    date, rating) with each broker's per-year EPS and PE forecasts from
-    Eastmoney, plus the market consensus (mean) EPS forecast per forward fiscal
-    year from THS (同花顺). Markets: China A-shares only (.SH/.SZ/.BJ).
+    q_type=0 returns recent stock-level broker reports (title, brokerage,
+    analyst, publish date, rating, EPS/PE forecasts) from Eastmoney plus THS
+    consensus EPS. q_type=1 is reserved for industry reports and currently
+    returns an explicit not-implemented error without making a network request
+    or substituting q_type=0 stock data.
 
     Args:
-        code: A-share symbol in <code>.<exchange> form (SH/SZ/BJ).
+        code: A-share symbol in <code>.<exchange> form (SH/SZ/BJ). Required
+            when q_type=0; ignored by the current q_type=1 error path.
         limit: Maximum number of most-recent research reports to return.
+        q_type: 0 for implemented stock reports; 1 for the reserved,
+            not-yet-implemented industry-report interface.
     """
+    params: dict[str, Any] = {"q_type": q_type, "limit": limit}
+    if code is not None:
+        params["code"] = code
     registry = _get_registry()
-    return registry.execute("get_research_reports", {"code": code, "limit": limit})
+    return registry.execute("get_research_reports", params)
 
 
 @mcp.tool
@@ -1891,11 +1905,23 @@ def scan_shadow_signals(
 
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Correct the wire schema for get_research_reports so MCP clients see the
+# declared Draft 2020-12 contract (q_type enum, limit min/max, conditional
+# code) instead of the auto-generated looser schema.  The output schema is
+# left as FastMCP's default ``{result: string}`` because the tool returns a
+# JSON string envelope (all tools in this project follow that convention).
 # ---------------------------------------------------------------------------
+def _patch_research_reports_schema() -> None:
+    import asyncio
+
+    async def _apply() -> None:
+        tool = await mcp.get_tool("get_research_reports")
+        tool.parameters = RESEARCH_REPORT_INPUT_SCHEMA
+
+    asyncio.run(_apply())
 
 
-def main():
+def main() -> None:
     """Entry point for `vibe-trading-mcp` CLI command."""
     global _include_shell_tools, _registry
     import argparse
@@ -1920,6 +1946,11 @@ def main():
     _include_shell_tools = True if args.transport == "stdio" else _env_shell_tools_enabled()
     _registry = None
     _get_registry()  # pre-warm: avoids deadlock when first tools/call lazy-inits inside FastMCP worker thread
+
+    # Correct the input schema for MCP clients so they see the declared
+    # Draft 2020-12 contract (q_type enum [0,1], limit 1-50, conditional
+    # code required) instead of the auto-generated looser Python signature.
+    _patch_research_reports_schema()
 
     if args.transport == "sse":
         mcp.run(transport="sse", port=args.port)

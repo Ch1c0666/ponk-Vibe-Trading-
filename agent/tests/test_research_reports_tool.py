@@ -11,6 +11,12 @@ import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from jsonschema import Draft202012Validator
+
+from backtest.loaders.research_reports import (
+    RESEARCH_REPORT_INPUT_SCHEMA,
+    RESEARCH_REPORT_OUTPUT_SCHEMA,
+)
 from src.tools import research_reports_tool as rrt
 from src.tools.research_reports_tool import ResearchReportsTool
 
@@ -21,6 +27,7 @@ _REPORT_PAYLOAD = {
             "orgSName": "Broker A",
             "researcher": "Analyst One",
             "publishDate": "2024-04-30 08:00:00",
+            "infoCode": "ANALYSIS-001",
             "emRatingName": "Buy",
             "predictThisYearEps": "12.34",
             "predictNextYearEps": "15.00",
@@ -64,10 +71,14 @@ def test_success_envelope_merges_reports_and_consensus():
         out = ResearchReportsTool().execute(code="600519.SH", limit=10)
 
     payload = json.loads(out)
+    Draft202012Validator(RESEARCH_REPORT_OUTPUT_SCHEMA).validate(payload)
     assert payload["ok"] is True
     assert payload["market"] == "CN"
     assert payload["source"] == "eastmoney+ths"
+    assert payload["data"]["q_type"] == 0
     assert payload["data"]["code"] == "600519.SH"
+    assert payload["data"]["partial"] is False
+    assert payload["data"]["warnings"] == []
 
     reports = payload["data"]["reports"]
     assert len(reports) == 2
@@ -76,6 +87,7 @@ def test_success_envelope_merges_reports_and_consensus():
         "brokerage": "Broker A",
         "analyst": "Analyst One",
         "publish_date": "2024-04-30",
+        "info_code": "ANALYSIS-001",
         "rating": "Buy",
         "eps_forecast": {"this_year": 12.34, "next_year": 15.0},
         "pe_forecast": {"this_year": 20.1, "next_year": 16.5},
@@ -89,6 +101,7 @@ def test_success_envelope_merges_reports_and_consensus():
 
     # Eastmoney called with the bare numeric code; THS routed to the ths bucket.
     assert mock_em.call_args.kwargs["params"]["code"] == "600519"
+    assert mock_em.call_args.kwargs["params"]["qType"] == "0"
     assert mock_ths.call_args.kwargs["host_key"] == "ths"
     assert mock_ths.call_args.kwargs["params"]["code"] == "600519"
 
@@ -137,7 +150,150 @@ def test_missing_code_returns_error_envelope():
     out = ResearchReportsTool().execute()
     payload = json.loads(out)
     assert payload["ok"] is False
+    assert payload["error_code"] == "invalid_argument"
+    assert payload["details"] == {"q_type": 0, "supported_q_types": [0]}
     assert "required" in payload["error"]
+
+
+def test_qtype_1_fails_closed_before_symbol_resolution_or_http():
+    with patch.object(rrt, "resolve_secid") as mock_resolve, patch.object(
+        rrt, "get_json"
+    ) as mock_em, patch.object(rrt, "throttled_get") as mock_ths:
+        out = ResearchReportsTool().execute(q_type=1)
+
+    payload = json.loads(out)
+    assert payload == {
+        "ok": False,
+        "error": (
+            "industry research reports (qType=1) are not implemented; "
+            "qType=0 stock reports will not be substituted"
+        ),
+        "error_code": "industry_reports_not_implemented",
+        "details": {"q_type": 1, "supported_q_types": [0]},
+    }
+    mock_resolve.assert_not_called()
+    mock_em.assert_not_called()
+    mock_ths.assert_not_called()
+
+
+def test_qtype_1_never_uses_supplied_stock_code_as_fallback():
+    with patch.object(rrt, "resolve_secid") as mock_resolve, patch.object(
+        rrt, "get_json"
+    ) as mock_em, patch.object(rrt, "throttled_get") as mock_ths:
+        out = ResearchReportsTool().execute(
+            q_type=1,
+            code="600519.SH",
+            limit=10,
+        )
+
+    payload = json.loads(out)
+    assert payload["error_code"] == "industry_reports_not_implemented"
+    mock_resolve.assert_not_called()
+    mock_em.assert_not_called()
+    mock_ths.assert_not_called()
+
+
+def test_invalid_qtype_is_rejected_without_http():
+    with patch.object(rrt, "resolve_secid") as mock_resolve, patch.object(
+        rrt, "get_json"
+    ) as mock_em, patch.object(rrt, "throttled_get") as mock_ths:
+        out = ResearchReportsTool().execute(q_type="1", code="600519.SH")
+
+    payload = json.loads(out)
+    assert payload["ok"] is False
+    assert payload["error_code"] == "invalid_argument"
+    assert payload["details"] == {"q_type": "1", "supported_q_types": [0]}
+    mock_resolve.assert_not_called()
+    mock_em.assert_not_called()
+    mock_ths.assert_not_called()
+
+
+def test_provider_style_qtype_argument_cannot_fall_back_to_stock_reports():
+    with patch.object(rrt, "resolve_secid") as mock_resolve, patch.object(
+        rrt, "get_json"
+    ) as mock_em, patch.object(rrt, "throttled_get") as mock_ths:
+        out = ResearchReportsTool().execute(
+            qType=1,
+            code="600519.SH",
+        )
+
+    payload = json.loads(out)
+    assert payload["ok"] is False
+    assert payload["error_code"] == "invalid_argument"
+    assert payload["details"] == {"q_type": 1, "supported_q_types": [0]}
+    assert "uses 'q_type'" in payload["error"]
+    mock_resolve.assert_not_called()
+    mock_em.assert_not_called()
+    mock_ths.assert_not_called()
+
+
+def test_invalid_limit_is_rejected_without_http():
+    with patch.object(rrt, "get_json") as mock_em, patch.object(
+        rrt, "throttled_get"
+    ) as mock_ths:
+        out = ResearchReportsTool().execute(
+            q_type=0,
+            code="600519.SH",
+            limit=0,
+        )
+
+    payload = json.loads(out)
+    assert payload["error_code"] == "invalid_argument"
+    mock_em.assert_not_called()
+    mock_ths.assert_not_called()
+
+
+def test_tool_exposes_explicit_input_and_output_schemas():
+    tool = ResearchReportsTool()
+    assert tool.parameters is RESEARCH_REPORT_INPUT_SCHEMA
+    assert tool.output_schema is RESEARCH_REPORT_OUTPUT_SCHEMA
+    assert tool.parameters["properties"]["q_type"]["enum"] == [0, 1]
+    assert tool.parameters["$schema"].endswith("/draft/2020-12/schema")
+    assert tool.parameters["allOf"][0]["else"] == {"required": ["code"]}
+    assert "q_type=0 requires code" in tool.parameters["description"]
+    assert tool.output_schema["oneOf"][0]["properties"]["data"]["properties"][
+        "q_type"
+    ] == {"const": 0}
+
+
+def test_later_report_page_failure_returns_partial_success_and_warning():
+    first_page = [
+        {
+            "title": f"Report {index:02d}",
+            "publishDate": "2026-07-17",
+        }
+        for index in range(20)
+    ]
+
+    def get_page(_url: str, *, params: dict[str, str]) -> dict:
+        if params["pageNo"] == "1":
+            return {"data": first_page, "hits": 21}
+        raise RuntimeError("offline page 2 failure")
+
+    with patch.object(rrt, "get_json", side_effect=get_page), patch.object(
+        rrt,
+        "throttled_get",
+        side_effect=RuntimeError("offline THS failure"),
+    ):
+        out = ResearchReportsTool().execute(
+            code="600519.SH",
+            limit=21,
+        )
+
+    payload = json.loads(out)
+    Draft202012Validator(RESEARCH_REPORT_OUTPUT_SCHEMA).validate(payload)
+    assert payload["ok"] is True
+    assert len(payload["data"]["reports"]) == 20
+    assert payload["data"]["partial"] is True
+    assert payload["data"]["warnings"] == [
+        {
+            "code": "provider_page_failed",
+            "message": (
+                "research report page 2 failed: offline page 2 failure"
+            ),
+            "page": 2,
+        }
+    ]
 
 
 def test_report_request_failure_is_caught_as_error_envelope():

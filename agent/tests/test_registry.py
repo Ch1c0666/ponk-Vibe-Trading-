@@ -2,19 +2,41 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+import importlib
+import socket
+import sys
+from types import ModuleType
+from unittest.mock import Mock, patch
 
 import pytest
 
 from backtest.loaders.base import DataLoaderProtocol, NoAvailableSourceError
+from backtest.loaders import registry as registry_module
 from backtest.loaders.registry import (
     FALLBACK_CHAINS,
     LOADER_REGISTRY,
     VALID_SOURCES,
+    _ensure_registered,
     get_loader_cls_with_fallback,
     register,
     resolve_loader,
 )
+
+
+@pytest.fixture(autouse=True)
+def _restore_registry_state():
+    """Keep registry tests independent of collection and execution order.
+
+    Importing a loader mutates ``LOADER_REGISTRY`` via its decorator while the
+    imported module remains cached in ``sys.modules``.  Snapshot both registry
+    state variables so a test cannot make a later test depend on that mutation.
+    """
+    registry_snapshot = dict(LOADER_REGISTRY)
+    registered_snapshot = registry_module._registered
+    yield
+    LOADER_REGISTRY.clear()
+    LOADER_REGISTRY.update(registry_snapshot)
+    registry_module._registered = registered_snapshot
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +171,8 @@ class TestFallbackChains:
         """Equity chains lead with throttle-tolerant public sources and trail
         with key-gated REST fallbacks, in the exact reviewed order."""
         assert FALLBACK_CHAINS["a_share"] == [
-            "tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local",
+            "tencent", "astockdata", "mootdx", "eastmoney", "baostock",
+            "akshare", "tushare", "local",
         ]
         assert FALLBACK_CHAINS["us_equity"] == [
             "yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp",
@@ -189,16 +212,59 @@ class TestValidSources:
     def test_includes_new_loaders(self) -> None:
         """Newly registered loaders must be accepted config sources."""
         new_sources = {
-            "eastmoney", "sina", "stooq", "yahoo",
+            "astockdata", "eastmoney", "sina", "stooq", "yahoo",
             "finnhub", "alphavantage", "tiingo", "fmp",
         }
         assert new_sources <= VALID_SOURCES
 
+    def test_astockdata_module_registers_loader(self) -> None:
+        """The repository loader must register under its configured source name."""
+        from backtest.loaders import astockdata_loader
+
+        _ensure_registered()
+        assert LOADER_REGISTRY["astockdata"] is astockdata_loader.DataLoader
+
+    def test_ensure_registered_repairs_registry_from_cached_module(self) -> None:
+        """A cached module must be able to repopulate a cleared registry entry.
+
+        Regression: ``import_module`` does not re-run ``@register`` when the
+        module is already in ``sys.modules``.  A prior test could therefore
+        leave ``_registered=True`` but no ``astockdata`` entry.
+        """
+        module = importlib.import_module("backtest.loaders.astockdata_loader")
+        assert sys.modules["backtest.loaders.astockdata_loader"] is module
+
+        LOADER_REGISTRY.pop("astockdata", None)
+        registry_module._registered = True
+        _ensure_registered()
+
+        assert LOADER_REGISTRY["astockdata"] is module.DataLoader
+
+    def test_ensure_registered_preserves_explicit_override(self) -> None:
+        """Repairing cached modules must not replace an intentional override."""
+        importlib.import_module("backtest.loaders.astockdata_loader")
+
+        class _AstockdataOverride:
+            name = "astockdata"
+
+        LOADER_REGISTRY["astockdata"] = _AstockdataOverride
+        registry_module._registered = True
+        _ensure_registered()
+
+        assert LOADER_REGISTRY["astockdata"] is _AstockdataOverride
+
+    def test_registered_pass_does_not_retry_module_imports(self) -> None:
+        """Optional dependencies that failed once are not retried per resolve."""
+        registry_module._registered = True
+
+        with patch.object(importlib, "import_module") as import_module:
+            _ensure_registered()
+
+        import_module.assert_not_called()
+
     def test_covers_all_registered_loaders(self) -> None:
         """Every registered loader name must be an accepted config source so a
         new loader can never be silently rejected by config validation."""
-        from backtest.loaders.registry import _ensure_registered
-
         _ensure_registered()
         missing = set(LOADER_REGISTRY) - VALID_SOURCES
         assert not missing, f"loaders missing from VALID_SOURCES: {missing}"
@@ -260,6 +326,117 @@ class TestGetLoaderWithFallback:
             }):
                 cls = get_loader_cls_with_fallback("fake_unavailable")
                 assert cls is _FakeAvailableLoader
+
+    def test_real_astockdata_provider_failure_falls_through_at_fetch_time(self) -> None:
+        """The production auto-fetch path falls through after a provider error.
+
+        ``astockdata.DataLoader.is_available()`` intentionally returns ``True``
+        for its public endpoint, so an availability-only fake cannot exercise
+        the real failure mode.  Here its actual provider boundary raises,
+        ``DataLoader.fetch`` converts that failure to an empty result, and
+        ``runner._fetch_auto`` advances to the next source without any network.
+        """
+        from backtest.loaders import astockdata_loader
+
+        # runner imports python-dotenv and calls load_dotenv at module import.
+        # Supply a scoped no-op module so this offline test never reads .env.
+        dotenv_stub = ModuleType("dotenv")
+        dotenv_stub.load_dotenv = Mock(return_value=None)
+        with patch.dict(sys.modules, {"dotenv": dotenv_stub}):
+            runner = importlib.import_module("backtest.runner")
+
+        code = "600519.SH"
+        pd = pytest.importorskip("pandas")
+        fallback_frame = pd.DataFrame(
+            {
+                "open": [10.0],
+                "high": [11.0],
+                "low": [9.0],
+                "close": [10.5],
+                "volume": [1000.0],
+            },
+            index=pd.to_datetime(["2026-07-16"]),
+        )
+        fallback_fetch = Mock(return_value={code: fallback_frame})
+
+        class _RuntimeFallbackLoader:
+            name = "offline_fallback"
+            markets = {"a_share"}
+            requires_auth = False
+
+            def is_available(self) -> bool:
+                return True
+
+            def fetch(
+                self, codes, start_date, end_date, *, interval="1D", fields=None,
+            ):
+                return fallback_fetch(
+                    codes,
+                    start_date,
+                    end_date,
+                    interval=interval,
+                    fields=fields,
+                )
+
+        def _bypass_cache(**kwargs):
+            return kwargs["fetch"]()
+
+        with patch.object(
+            socket.socket,
+            "connect",
+            side_effect=AssertionError(
+                "offline registry test attempted a socket connection",
+            ),
+        ), patch.object(
+            socket.socket,
+            "connect_ex",
+            side_effect=AssertionError(
+                "offline registry test attempted a socket connection",
+            ),
+        ), patch.object(
+            registry_module,
+            "_ensure_registered",
+        ), patch.dict(
+            LOADER_REGISTRY,
+            {
+                "astockdata": astockdata_loader.DataLoader,
+                "offline_fallback": _RuntimeFallbackLoader,
+            },
+            clear=True,
+        ), patch.dict(
+            FALLBACK_CHAINS,
+            {"a_share": ["astockdata", "offline_fallback"]},
+            clear=True,
+        ), patch.object(
+            astockdata_loader,
+            "cached_loader_fetch",
+            side_effect=_bypass_cache,
+        ), patch.object(
+            astockdata_loader.DataLoader,
+            "_fetch_ohlc_one",
+            side_effect=ConnectionError("offline provider failure"),
+        ) as provider_fetch:
+            result = runner._fetch_auto(
+                [code],
+                {
+                    "start_date": "2026-07-01",
+                    "end_date": "2026-07-16",
+                },
+            )
+
+        provider_fetch.assert_called_once_with(
+            code,
+            "2026-07-01",
+            "2026-07-16",
+        )
+        fallback_fetch.assert_called_once_with(
+            [code],
+            "2026-07-01",
+            "2026-07-16",
+            interval="1D",
+            fields=None,
+        )
+        assert result[code].equals(fallback_frame)
 
     def test_unknown_source_raises(self) -> None:
         with patch.dict(LOADER_REGISTRY, {}, clear=True):

@@ -10,6 +10,7 @@ of import order.
 from __future__ import annotations
 
 import logging
+import sys
 from typing import Any, Type
 
 from backtest.loaders.base import NoAvailableSourceError
@@ -24,11 +25,40 @@ LOADER_REGISTRY: dict[str, Type[Any]] = {}
 
 _registered = False
 
+# ``import_module()`` does not execute a module's decorators a second time when
+# the module is already present in ``sys.modules``.  Keeping the class attribute
+# next to each module lets ``_ensure_registered()`` repair a cleared or partially
+# restored registry without reloading modules (which would have much broader
+# process-global side effects).
+_LOADER_SPECS: tuple[tuple[str, str, str], ...] = (
+    ("tushare", "backtest.loaders.tushare", "DataLoader"),
+    ("okx", "backtest.loaders.okx", "DataLoader"),
+    ("yfinance", "backtest.loaders.yfinance_loader", "DataLoader"),
+    ("akshare", "backtest.loaders.akshare_loader", "DataLoader"),
+    ("baostock", "backtest.loaders.baostock_loader", "DataLoader"),
+    ("tencent", "backtest.loaders.tencent_loader", "DataLoader"),
+    ("mootdx", "backtest.loaders.mootdx_loader", "DataLoader"),
+    ("ccxt", "backtest.loaders.ccxt_loader", "DataLoader"),
+    ("futu", "backtest.loaders.futu", "FutuLoader"),
+    ("eastmoney", "backtest.loaders.eastmoney_loader", "DataLoader"),
+    ("sina", "backtest.loaders.sina_loader", "DataLoader"),
+    ("stooq", "backtest.loaders.stooq_loader", "DataLoader"),
+    ("yahoo", "backtest.loaders.yahoo_loader", "DataLoader"),
+    ("finnhub", "backtest.loaders.finnhub_loader", "DataLoader"),
+    ("alphavantage", "backtest.loaders.alphavantage_loader", "DataLoader"),
+    ("tiingo", "backtest.loaders.tiingo_loader", "DataLoader"),
+    ("fmp", "backtest.loaders.fmp_loader", "DataLoader"),
+    ("qveris", "backtest.loaders.qveris_loader", "DataLoader"),
+    ("india_broker", "backtest.loaders.india_broker_loader", "DataLoader"),
+    ("longbridge", "backtest.loaders.longbridge", "LongbridgeLoader"),
+    ("local", "backtest.loaders.local_loader", "DataLoader"),
+    ("astockdata", "backtest.loaders.astockdata_loader", "DataLoader"),
+)
 # Canonical set of accepted data-source names: every registered loader plus the
 # ``"auto"`` cross-market selector. Single source of truth shared by the backtest
 # config schema (``backtest.runner.BacktestConfigSchema``) and the agent-facing
 # backtest tool (``src.tools.backtest_tool``) so the two can never drift apart.
-# Keep in sync with ``_loader_modules`` below — the regression test
+# Keep in sync with ``_LOADER_SPECS`` above — the regression test
 # ``test_valid_sources_covers_all_registered_loaders`` enforces full coverage.
 VALID_SOURCES: set[str] = {
     "tushare",
@@ -69,45 +99,38 @@ def register(cls: Type[Any]) -> Type[Any]:
 def _ensure_registered() -> None:
     """Import every known loader module so ``@register`` decorators fire.
 
-    Safe to call multiple times — only runs the imports once.
+    Safe to call multiple times.  After the first import pass, later calls only
+    inspect modules already cached in ``sys.modules``.  This repairs registry
+    state without repeatedly retrying imports for optional dependencies that
+    were unavailable on the first pass.
+
     Loaders whose dependencies are missing (e.g. ``akshare`` not installed)
     are silently skipped.
     """
     global _registered
     if _registered:
+        for source_name, module_name, class_name in _LOADER_SPECS:
+            module = sys.modules.get(module_name)
+            if module is None:
+                continue
+            loader_cls = getattr(module, class_name, None)
+            if loader_cls is not None:
+                # Preserve intentional runtime/test overrides.
+                LOADER_REGISTRY.setdefault(source_name, loader_cls)
         return
-    _registered = True
 
-    _loader_modules = [
-        "backtest.loaders.tushare",
-        "backtest.loaders.okx",
-        "backtest.loaders.yfinance_loader",
-        "backtest.loaders.akshare_loader",
-        "backtest.loaders.baostock_loader",
-        "backtest.loaders.tencent_loader",
-        "backtest.loaders.mootdx_loader",
-        "backtest.loaders.ccxt_loader",
-        "backtest.loaders.futu",
-        "backtest.loaders.eastmoney_loader",
-        "backtest.loaders.sina_loader",
-        "backtest.loaders.stooq_loader",
-        "backtest.loaders.yahoo_loader",
-        "backtest.loaders.finnhub_loader",
-        "backtest.loaders.alphavantage_loader",
-        "backtest.loaders.tiingo_loader",
-        "backtest.loaders.fmp_loader",
-        "backtest.loaders.qveris_loader",  # QVERIS-INTEGRATION
-        "backtest.loaders.india_broker_loader",
-        "backtest.loaders.longbridge",
-        "backtest.loaders.local_loader",
-        "backtest.loaders.astockdata_loader",
-    ]
     import importlib
-    for mod in _loader_modules:
+    for source_name, module_name, class_name in _LOADER_SPECS:
         try:
-            importlib.import_module(mod)
+            module = importlib.import_module(module_name)
         except Exception:
-            pass
+            continue
+        loader_cls = getattr(module, class_name, None)
+        if loader_cls is not None:
+            # Preserve an intentional, already-registered override.  Only
+            # repair entries that are absent.
+            LOADER_REGISTRY.setdefault(source_name, loader_cls)
+    _registered = True
 
 
 # Sources that must NEVER silently fall through to a network loader when the

@@ -22,7 +22,13 @@ def broker_consensus(code: str, limit: int = 10) -> None:
         return
     data = envelope["data"]
     ratings = [r["rating"] for r in data["reports"] if r.get("rating")]
-    print(f"{code} 近 {limit} 篇研报评级：{ratings}")
+    actual_count = len(data["reports"])
+    qualifier = ""
+    if data.get("partial"):
+        qualifier = "（部分页失败，结果不完整）"
+        for w in data.get("warnings", []):
+            print(f"  警告：{w.get('message', '')}")
+    print(f"{code} 共 {actual_count} 篇研报{qualifier}，评级：{ratings}")
     print(f"  一致预期 EPS：{data.get('consensus_eps')}")
 
 

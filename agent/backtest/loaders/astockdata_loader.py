@@ -1,14 +1,15 @@
 """a-stock-data loader: A-share data via Tencent + Eastmoney HTTP APIs.
 
-Integrates the a-stock-data (simonlin1212/a-stock-data V3.4.0) toolkit's
-data-sourcing strategy into Vibe-Trading's DataLoader protocol.  Follows the
-"Tencent/mootdx first (no IP ban), Eastmoney only for exclusive data" principle.
+Implements selected public-data patterns inspired by a-stock-data inside
+Vibe-Trading's own DataLoader protocol. The repository code and its tested
+contracts are authoritative.
 
 OHLCV layer: Tencent ifzq HTTP API (never blocked).
 Extended layers: Eastmoney APIs (reportapi / push2 / push2ex / datacenter-web /
-search-api-web / np-weblist) — all throttled through ``_em_get``.
+search-api-web / np-weblist). The standardized research-report API uses the
+repository's shared ``eastmoney_client`` adapter; this module's historical raw
+report wrapper and its other legacy endpoints retain ``em_get``.
 
-API parameters are sync'd with a-stock-data SKILL.md V3.4.0 (2026-07-11).
 """
 
 from __future__ import annotations
@@ -24,6 +25,12 @@ import pandas as pd
 import requests
 
 from backtest.loaders.base import cached_loader_fetch, validate_date_range
+from backtest.loaders.research_reports import (
+    ResearchReportErrorEnvelope,
+    build_legacy_stock_report_params,
+    fetch_raw_stock_report_pages,
+    industry_reports_not_implemented,
+)
 from backtest.loaders.registry import register
 
 logger = logging.getLogger(__name__)
@@ -37,8 +44,6 @@ ZTB_UT = "7eea3edcaed734bea9cbfc24409ed989"  # push2ex UT token
 _TENCENT_KLIN_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
 _TENCENT_QUOTE_URL = "https://qt.gtimg.cn/q="
 _DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
-_REPORT_API = "https://reportapi.eastmoney.com/report/list"
-
 # ---------------------------------------------------------------------------
 # Eastmoney throttled session — mirrors a-stock-data ``em_get``
 # ---------------------------------------------------------------------------
@@ -182,40 +187,71 @@ def eastmoney_datacenter(
 # ---------------------------------------------------------------------------
 # Research reports — a-stock-data §2.1
 # ---------------------------------------------------------------------------
-def eastmoney_reports(code: str, max_pages: int = 5) -> List[Dict]:
-    """Fetch analyst research reports for a stock.
+def eastmoney_reports(
+    code: str,
+    max_pages: int = 5,
+) -> List[Dict]:
+    """Fetch raw qType=0 rows with the historical Python wrapper contract.
 
-    Returns list of {title, publishDate, orgSName, infoCode,
-    predictThisYearEps, predictNextYearEps, emRatingName, ...}.
+    Raw Eastmoney field names (for example ``publishDate`` and ``orgSName``)
+    are preserved. Callers receive the same pagination behavior as the a0d64d4
+    checkpoint: ``max_pages`` controls the iteration budget and ``hits`` is
+    defaulted to 0 when the provider omits it. The ``int()`` coercion on
+    ``max_pages`` is defensive (non-int values default to an empty list) and
+    does not change the approved single-source pagination budget; the
+    five-page hard clamp present in the Codex snapshot has been removed so
+    the runtime matches the a0d64d4 live installation. Standardized callers
+    should use :func:`backtest.loaders.research_reports.fetch_stock_reports`.
     """
-    reports: List[Dict] = []
-    for page in range(1, max_pages + 1):
-        params = {
-            "code": code,
-            "cb": "jQuery",
-            "pageSize": "20",
-            "pageNo": str(page),
-            "fields": "all",
-            "qType": "0",
-            "beginTime": "2024-01-01",
-            "endTime": "",
-            "_": str(int(time.time() * 1000)),
-        }
-        try:
-            r = em_get(_REPORT_API, params=params, timeout=15)
-            text = r.text
-            if text.startswith("jQuery("):
-                text = text[7:-1]
-            data = json.loads(text)
-            hits = data.get("hits", 0) if isinstance(data, dict) else 0
-            items = (data.get("data") or []) if isinstance(data, dict) else []
-            reports.extend(items)
-            if len(items) < 20 or page * 20 >= hits:
-                break
-        except Exception as exc:
-            logger.warning("eastmoney_reports p%s for %s: %s", page, code, exc)
-            break
-    return reports
+    try:
+        page_count = int(max_pages)
+    except (TypeError, ValueError):
+        return []
+    if page_count < 1:
+        return []
+
+    def build_params(
+        provider_code: str,
+        *,
+        page_no: int,
+        page_size: int,
+    ) -> dict[str, str]:
+        return build_legacy_stock_report_params(
+            provider_code,
+            page_no=page_no,
+            page_size=page_size,
+            timestamp_ms=int(time.time() * 1000),
+        )
+
+    def get_page(url: str, *, params: dict[str, str]) -> Any:
+        return em_get(url, params=params, timeout=15)
+
+    try:
+        result = fetch_raw_stock_report_pages(
+            code,
+            max_pages=page_count,
+            get_page=get_page,
+            build_params=build_params,
+        )
+    except Exception as exc:  # noqa: BLE001 - legacy loader returns [] on failure
+        logger.warning("eastmoney_reports for %s: %s", code, exc)
+        return []
+    for warning in result["warnings"]:
+        logger.warning("eastmoney_reports for %s: %s", code, warning["message"])
+    return result["rows"]
+
+
+def eastmoney_industry_reports(
+    industry: str | None = None,
+    limit: int = 20,
+) -> ResearchReportErrorEnvelope:
+    """Reserve the qType=1 interface and fail closed until it is implemented.
+
+    ``industry`` and ``limit`` are accepted for forward compatibility only.
+    No network request is made, and qType=0 stock reports are never returned.
+    """
+    del industry, limit
+    return industry_reports_not_implemented()
 
 
 # ---------------------------------------------------------------------------

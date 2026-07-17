@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from typing import Any
 
 from backtest.loaders._http import (
@@ -31,13 +32,22 @@ from backtest.loaders._http import (
     throttled_get,
 )
 from backtest.loaders.eastmoney_client import get_json, resolve_secid
+from backtest.loaders.research_reports import (
+    DEFAULT_REPORT_LIMIT,
+    MAX_TOOL_REPORT_LIMIT,
+    QTYPE_INDUSTRY,
+    QTYPE_STOCK,
+    RESEARCH_REPORT_INPUT_SCHEMA,
+    RESEARCH_REPORT_OUTPUT_SCHEMA,
+    fetch_stock_reports,
+    industry_reports_not_implemented,
+    invalid_q_type_error,
+    normalize_a_share_symbol,
+    parse_q_type,
+)
 from src.agent.tools import BaseTool
 
 logger = logging.getLogger(__name__)
-
-# Eastmoney research-report list endpoint. qType=0 selects individual-stock
-# reports; the response carries a ``data`` array of one row per report.
-_REPORT_LIST_URL = "https://reportapi.eastmoney.com/report/list"
 
 # THS consensus-forecast endpoint. Returns per-forward-year mean analyst EPS.
 _THS_CONSENSUS_URL = "https://basic.10jqka.com.cn/api/stock/profit_forecast/"
@@ -45,13 +55,7 @@ _THS_HOST_KEY = "ths"
 _THS_MIN_INTERVAL_ENV = "VIBE_TRADING_THS_MIN_INTERVAL"
 _THS_DEFAULT_MIN_INTERVAL = 1.0
 _THS_TIMEOUT_S = 15.0
-
-# A-share exchange suffixes these disclosures cover.
-_A_SHARE_SUFFIXES = ("SH", "SZ", "BJ")
-
-# Hard caps so a long history cannot bloat the payload.
-_DEFAULT_LIMIT = 20
-_MAX_LIMIT = 50
+_PUBLIC_ARGUMENTS = frozenset({"q_type", "code", "limit"})
 
 
 class ResearchReportsTool(BaseTool):
@@ -64,78 +68,110 @@ class ResearchReportsTool(BaseTool):
         "each broker's per-year EPS and PE forecasts from Eastmoney, plus the "
         "market consensus (mean) EPS forecast per forward fiscal year from THS "
         "(同花顺). Markets: China A-shares only (.SH / .SZ / .BJ). "
-        'Example: {"code": "600519.SH", "limit": 10}.'
+        "q_type=0 is supported; q_type=1 (industry reports) currently returns "
+        "an explicit not-implemented error and never substitutes stock data. "
+        'Example: {"q_type": 0, "code": "600519.SH", "limit": 10}.'
     )
-    parameters = {
-        "type": "object",
-        "properties": {
-            "code": {
-                "type": "string",
-                "description": (
-                    "A-share symbol in <code>.<exchange> form, exchange suffix one "
-                    "of SH / SZ / BJ (e.g. '600519.SH', '000001.SZ', '830799.BJ')."
-                ),
-            },
-            "limit": {
-                "type": "integer",
-                "description": (
-                    "Maximum number of most-recent research reports to return "
-                    f"(1-{_MAX_LIMIT}). Defaults to {_DEFAULT_LIMIT}."
-                ),
-                "default": _DEFAULT_LIMIT,
-            },
-        },
-        "required": ["code"],
-    }
+    parameters = RESEARCH_REPORT_INPUT_SCHEMA
+    output_schema = RESEARCH_REPORT_OUTPUT_SCHEMA
 
     def execute(self, **kwargs: Any) -> str:
         """Resolve the symbol, fetch reports + consensus, return a JSON envelope.
 
         Args:
-            **kwargs: ``code`` (required A-share symbol) and optional ``limit``
-                (report count cap).
+            **kwargs: ``q_type`` (0 by default), ``code`` (required for
+                q_type=0), and optional ``limit`` (report count cap).
 
         Returns:
             A JSON string envelope. On success:
             ``{"ok": true, "market": "CN", "source": "eastmoney+ths",
-            "data": {"code", "reports": [...], "consensus_eps": [...]}}``.
-            On failure: ``{"ok": false, "error": str}``.
+            "data": {"q_type": 0, "code", "reports": [...],
+            "consensus_eps": [...], "partial", "warnings"}}``. Failures use the stable
+            ``ok/error/error_code/details`` envelope.
         """
-        code = kwargs.get("code")
-        if not isinstance(code, str) or not code.strip():
-            return _error("'code' is required and must be a non-empty A-share symbol")
-        code = code.strip().upper()
-
-        suffix = code.rpartition(".")[2]
-        if suffix not in _A_SHARE_SUFFIXES:
-            return _error(
-                f"research reports are China A-share only (.SH/.SZ/.BJ); got '{code}'"
+        unexpected = sorted(set(kwargs) - _PUBLIC_ARGUMENTS)
+        if unexpected:
+            supplied_q_type = kwargs.get(
+                "q_type",
+                kwargs.get("qType", QTYPE_STOCK),
             )
-        if resolve_secid(code) is None:
-            return _error(f"could not resolve A-share symbol '{code}'")
+            return _error(
+                "unexpected argument(s): "
+                f"{', '.join(unexpected)}; public input uses 'q_type' "
+                "(snake_case), while provider 'qType' is internal",
+                error_code="invalid_argument",
+                q_type=supplied_q_type,
+            )
 
-        limit = _clamp_limit(kwargs.get("limit", _DEFAULT_LIMIT))
+        raw_q_type = kwargs.get("q_type", QTYPE_STOCK)
+        try:
+            q_type = parse_q_type(raw_q_type)
+        except ValueError:
+            return json.dumps(
+                invalid_q_type_error(raw_q_type),
+                ensure_ascii=False,
+            )
+
+        # Fail closed before symbol resolution or any HTTP boundary. Industry
+        # reports must never be synthesized from qType=0 stock rows.
+        if q_type == QTYPE_INDUSTRY:
+            return json.dumps(
+                industry_reports_not_implemented(),
+                ensure_ascii=False,
+            )
+
+        normalized = normalize_a_share_symbol(kwargs.get("code"))
+        if normalized is None:
+            return _error(
+                "A-share 'code' is required and must match "
+                "'<6-digit-code>.<SH|SZ|BJ>' for q_type=0",
+                error_code="invalid_argument",
+            )
+        code, bare_code = normalized
+
+        if resolve_secid(code) is None:
+            return _error(
+                f"could not resolve A-share symbol '{code}'",
+                error_code="invalid_argument",
+            )
+
+        raw_limit = kwargs.get("limit", DEFAULT_REPORT_LIMIT)
+        if (
+            type(raw_limit) is not int
+            or raw_limit < 1
+            or raw_limit > MAX_TOOL_REPORT_LIMIT
+        ):
+            return _error(
+                f"'limit' must be an integer from 1 to {MAX_TOOL_REPORT_LIMIT}",
+                error_code="invalid_argument",
+            )
+        limit = raw_limit
 
         try:
-            payload = get_json(
-                _REPORT_LIST_URL,
-                params={
-                    "code": _bare_code(code),
-                    "qType": "0",
-                    "pageSize": str(limit),
-                    "pageNo": "1",
-                },
+            report_result = fetch_stock_reports(
+                bare_code,
+                limit=limit,
+                get_page=get_json,
             )
         except Exception as exc:  # noqa: BLE001 - surface any fetch failure as envelope
-            return _error(f"eastmoney report list request failed: {exc}")
-
-        reports = _parse_reports(payload)
+            return _error(
+                f"eastmoney report list request failed: {exc}",
+                error_code="provider_request_failed",
+            )
 
         # Consensus EPS is best-effort: a THS outage must not sink the reports.
         consensus_eps = _fetch_consensus_eps(code)
 
-        if not reports and not consensus_eps:
-            return _error(f"no research coverage found for '{code}'")
+        reports = report_result["reports"]
+        if (
+            not reports
+            and not consensus_eps
+            and not report_result["partial"]
+        ):
+            return _error(
+                f"no research coverage found for '{code}'",
+                error_code="no_data",
+            )
 
         return json.dumps(
             {
@@ -143,9 +179,12 @@ class ResearchReportsTool(BaseTool):
                 "market": "CN",
                 "source": "eastmoney+ths",
                 "data": {
+                    "q_type": QTYPE_STOCK,
                     "code": code,
-                    "reports": reports[:limit],
+                    "reports": reports,
                     "consensus_eps": consensus_eps,
+                    "partial": report_result["partial"],
+                    "warnings": report_result["warnings"],
                 },
             },
             ensure_ascii=False,
@@ -155,75 +194,6 @@ class ResearchReportsTool(BaseTool):
 def _bare_code(code: str) -> str:
     """Return the numeric stock code without its exchange suffix."""
     return code.rpartition(".")[0]
-
-
-def _clamp_limit(value: Any) -> int:
-    """Coerce a requested report count into the supported ``1.._MAX_LIMIT`` range."""
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        return _DEFAULT_LIMIT
-    return max(1, min(n, _MAX_LIMIT))
-
-
-def _parse_reports(payload: Any) -> list[dict]:
-    """Extract per-report records from an Eastmoney reportapi payload.
-
-    Args:
-        payload: Decoded reportapi JSON; rows live under the ``data`` array.
-
-    Returns:
-        A list of normalized report dicts (newest first as served), empty when
-        the payload carries no usable rows.
-    """
-    if not isinstance(payload, dict):
-        return []
-    rows = payload.get("data")
-    if not isinstance(rows, list):
-        return []
-
-    reports: list[dict] = []
-    for row in rows:
-        record = _normalize_report(row)
-        if record is not None:
-            reports.append(record)
-    return reports
-
-
-def _normalize_report(row: Any) -> dict | None:
-    """Map one raw reportapi row to our report record, or ``None`` if unusable.
-
-    A row carrying neither a title nor a publish date holds no signal and is
-    dropped; a single bad row never aborts the batch.
-
-    Args:
-        row: One element of the reportapi ``data`` array.
-
-    Returns:
-        ``{title, brokerage, analyst, publish_date, rating, eps_forecast,
-        pe_forecast}`` or ``None``.
-    """
-    if not isinstance(row, dict):
-        return None
-    title = _clean_text(row.get("title"))
-    publish_date = _clean_date(row.get("publishDate"))
-    if title is None and publish_date is None:
-        return None
-    return {
-        "title": title,
-        "brokerage": _clean_text(row.get("orgSName")) or _clean_text(row.get("orgName")),
-        "analyst": _clean_text(row.get("researcher")),
-        "publish_date": publish_date,
-        "rating": _clean_text(row.get("emRatingName")) or _clean_text(row.get("sRatingName")),
-        "eps_forecast": {
-            "this_year": _to_number(row.get("predictThisYearEps")),
-            "next_year": _to_number(row.get("predictNextYearEps")),
-        },
-        "pe_forecast": {
-            "this_year": _to_number(row.get("predictThisYearPe")),
-            "next_year": _to_number(row.get("predictNextYearPe")),
-        },
-    }
 
 
 def _fetch_consensus_eps(code: str) -> list[dict]:
@@ -310,23 +280,33 @@ def _clean_text(value: Any) -> str | None:
     return trimmed or None
 
 
-def _clean_date(value: Any) -> str | None:
-    """Trim a timestamp cell to its ``YYYY-MM-DD`` date, or ``None``."""
-    if not isinstance(value, str) or not value.strip():
-        return None
-    return value.strip().split(" ", 1)[0]
-
-
 def _to_number(value: Any) -> float | None:
     """Coerce a cell to ``float``, or ``None`` when absent/non-numeric."""
     if value is None or value == "":
         return None
     try:
-        return float(value)
+        number = float(value)
     except (TypeError, ValueError):
         return None
+    return number if math.isfinite(number) else None
 
 
-def _error(message: str) -> str:
+def _error(
+    message: str,
+    *,
+    error_code: str,
+    q_type: Any = QTYPE_STOCK,
+) -> str:
     """Render a failure envelope as a JSON string."""
-    return json.dumps({"ok": False, "error": message}, ensure_ascii=False)
+    return json.dumps(
+        {
+            "ok": False,
+            "error": message,
+            "error_code": error_code,
+            "details": {
+                "q_type": q_type,
+                "supported_q_types": [QTYPE_STOCK],
+            },
+        },
+        ensure_ascii=False,
+    )

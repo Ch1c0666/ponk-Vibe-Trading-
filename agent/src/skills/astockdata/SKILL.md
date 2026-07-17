@@ -1,109 +1,137 @@
 ---
 name: astockdata
 category: data-source
-description: A股全栈数据工具包（集成 simonlin1212/a-stock-data V3.4）— 10层架构43端点，覆盖行情(K线/盘口/PE/PB/市值)、研报(个股+行业+PDF)、信号(热点/北向/龙虎榜/解禁/行业)、资金面(融资融券/大宗/股东户数/分红)、新闻(财联社电报+全球资讯)、基础数据(财报三表/F10/季报)、公告(巨潮)、打板(涨停池+炸板率+连板梯队)、ETF期权(T型报价+希腊字母+IV)、舆情互动(互动易+热榜+概念命中)。优先走不封IP的通达信(mootdx)/腾讯，东财接口已内置限流防封。零key可用（除iwencai）。
+description: 仓库内置的 A 股只读数据适配器。当前覆盖腾讯 OHLCV/行情及若干东财公开数据；个股研报 qType=0 已定义稳定 schema，行业研报 qType=1 尚未实现并明确报错。无需 API Key。
 ---
 
-# a-stock-data — A股全栈数据工具包
+# astockdata（仓库实现）
 
-## 概述
+## 能力边界
 
-基于 [simonlin1212/a-stock-data](https://github.com/simonlin1212/a-stock-data) V3.4.0，集成到 Vibe-Trading 的 A 股数据获取层。覆盖 10 层数据架构，43 个端点，15 个数据源。优先使用不封 IP 的通达信(mootdx)/腾讯财经，东财仅用于其独有数据且内置限流。
+本 skill 只描述当前仓库
+`backtest.loaders.astockdata_loader` 和
+`src.tools.research_reports_tool` 中实际存在的能力。仓库源码是唯一维护源；
+不要从其他 runtime 副本或外部 skill 目录复制逻辑。
 
-所有函数均可从 `backtest.loaders.astockdata_loader` 直接导入使用。
+所有接口均为只读公开数据源，不连接券商，也不执行交易。联网调用必须继续使用
+项目已有的限流客户端。
 
-## 数据源优先级
+当前实际实现：
 
-| 优先级 | 数据源 | 封IP风险 | 用途 |
-|--------|--------|---------|------|
-| 1（首选） | mootdx（通达信） | 不封 | K线/五档/逐笔/财务快照/F10 |
-| 2 | 腾讯财经 | 不封 | 实时价/PE/PB/市值/指数/ETF |
-| 3 | 新浪/巨潮/同花顺 | 低 | 财报三表/公告/EPS |
-| 4（仅独有） | 东财 eastmoney | 有风控 | 龙虎榜/研报/资金流等（内置限流） |
+| 函数或工具 | 数据 | 状态 |
+| --- | --- | --- |
+| `DataLoader.fetch(...)` | A 股日线 OHLCV（腾讯） | 已实现 |
+| `tencent_quote(codes)` | 实时价、PE/PB、市值等（腾讯） | 已实现 |
+| `get_research_reports` | 标准化个股研报 qType=0（东财 + THS） | 已实现 |
+| `eastmoney_reports` | 兼容旧 Python 调用的东财原始字段列表 | 已实现 |
+| `eastmoney_industry_reports` | 行业研报 qType=1 | 未实现，安全报错 |
+| `eastmoney_datacenter(...)` | 东财数据中心通用查询 | 已实现 |
+| `industry_comparison(...)` | 行业涨跌排名 | 已实现 |
+| `eastmoney_stock_news(...)` | 个股新闻 | 已实现 |
+| `eastmoney_global_news(...)` | 全球资讯 | 已实现 |
+| `em_limit_up_pools(...)` | 涨停、炸板、跌停、昨涨停池 | 已实现 |
+| `margin_trading(...)` | 融资融券 | 已实现 |
+| `daily_dragon_tiger(...)` | 龙虎榜 | 已实现 |
+| `eastmoney_stock_info(...)` | 个股基础信息 | 已实现 |
 
-## 快速上手
+不要声称仓库已实现行业研报、研报 PDF、财报三表、公告、互动易、ETF
+期权或其他未列出的端点。
+
+## 个股研报 qType=0 契约
+
+公开工具入参字段使用 `q_type`；东财底层参数使用 `qType`。两者不要混用。
+
+```json
+{
+  "q_type": 0,
+  "code": "600519.SH",
+  "limit": 20
+}
+```
+
+- `q_type`：整数，只允许 `0` 或 `1`，默认 `0`。
+- `code`：q_type=0 时必填，格式为六位代码加 `.SH`、`.SZ` 或 `.BJ`；
+  后缀不区分大小写，输出统一转为大写。
+- `limit`：整数 1–50，默认 20。
+- 未声明的字段不属于公开 schema。
+
+成功信封：
+
+```json
+{
+  "ok": true,
+  "market": "CN",
+  "source": "eastmoney+ths",
+  "data": {
+    "q_type": 0,
+    "code": "600519.SH",
+    "reports": [],
+    "consensus_eps": [],
+    "partial": false,
+    "warnings": []
+  }
+}
+```
+
+`reports` 每行固定包含：
+
+- `title`、`brokerage`、`analyst`、`publish_date`、`info_code`、`rating`
+  （均可为 null）；
+- `eps_forecast.this_year`、`eps_forecast.next_year`；
+- `pe_forecast.this_year`、`pe_forecast.next_year`
+  （预测值均为 number 或 null）。
+
+`consensus_eps` 每行固定包含 `fiscal_year`（string 或 null）和
+`consensus_eps`（number 或 null）。同花顺一致预期是 best-effort：
+其请求失败时该数组为空，但不会伪造数据。
+
+东财第一页失败时工具返回整体错误。第二页及之后失败时保留已取得的
+`reports`，并返回 `partial: true`；`warnings` 中包含
+`provider_page_failed` 及失败页码。完整结果使用 `partial: false` 和空
+`warnings`。
+
+`eastmoney_reports(code, max_pages=...)` 是兼容入口，继续返回
+`publishDate`、`orgSName`、`infoCode` 等东财原始字段，不返回上述标准化
+信封。它接受数字字符串页数，行为与 a0d64d4 恢复点一致（缺失/非法 `hits`
+默认 0，在第一页后停止）；需要标准字段、`strict_hits` 完整性检查和
+`partial` 状态的新调用应使用 `get_research_reports` 或
+`backtest.loaders.research_reports.fetch_stock_reports`。
+
+## 行业研报 qType=1
+
+qType=1 目前没有可信实现。调用必须在解析证券代码或联网之前返回：
+
+```json
+{
+  "ok": false,
+  "error": "industry research reports (qType=1) are not implemented; qType=0 stock reports will not be substituted",
+  "error_code": "industry_reports_not_implemented",
+  "details": {
+    "q_type": 1,
+    "supported_q_types": [0]
+  }
+}
+```
+
+禁止用 qType=0 个股研报冒充行业研报，禁止生成占位研报内容。
+
+## 示例
 
 ```python
 from backtest.loaders.astockdata_loader import (
-    DataLoader,           # OHLCV data loader (DataLoaderProtocol)
-    tencent_quote,        # 实时行情 PE/PB/市值
-    eastmoney_reports,    # 研报列表
-    eastmoney_stock_news, # 个股新闻
-    eastmoney_global_news,# 全球7x24资讯
-    em_limit_up_pools,    # 涨停/炸板/跌停/昨涨停四池
-    eastmoney_datacenter, # 东财数据中心通用查询
-    industry_comparison,  # 行业涨跌排名
-    eastmoney_stock_info, # 个股基本面信息
+    DataLoader,
+    eastmoney_industry_reports,
+    eastmoney_reports,
+    tencent_quote,
 )
+from src.tools.research_reports_tool import ResearchReportsTool
 
-# 获取实时行情
 quotes = tencent_quote(["600519", "000001"])
-# -> {"600519": {"name": "贵州茅台", "price": 1258.99, "pe_ttm": 19.03, ...}, ...}
-
-# 获取研报
-reports = eastmoney_reports("600519", max_pages=3)
-
-# 获取全球资讯
-news = eastmoney_global_news()
-
-# 获取打板数据
-pools = em_limit_up_pools("20260716")
+legacy_raw_reports = eastmoney_reports("600519", max_pages="3")
+unsupported = eastmoney_industry_reports()
+envelope = ResearchReportsTool().execute(
+    q_type=0,
+    code="600519.SH",
+    limit=10,
+)
 ```
-
-## 端点路由速查
-
-### 行情层 (§1) — 不封IP
-| 函数 | 用途 | 源 |
-|------|------|-----|
-| `DataLoader.fetch(codes, start, end)` | OHLCV K线数据 | 腾讯 ifzq |
-| `tencent_quote(codes)` | 实时价/PE/PB/市值/换手率 | 腾讯 |
-| `tdx_client()` → `.bars()` / `.quotes()` | K线/五档盘口/逐笔 | 通达信 |
-
-### 研报层 (§2)
-| 函数 | 用途 | 源 |
-|------|------|-----|
-| `eastmoney_reports(code)` | 个股研报+评级+EPS预测 | 东财 reportapi |
-| `eastmoney_industry_reports(code)` | 行业研报 | 东财 reportapi |
-
-### 信号层 (§3)
-| 函数 | 用途 | 源 |
-|------|------|-----|
-| `industry_comparison(top_n)` | 行业板块涨跌排名 | 东财 |
-| `daily_dragon_tiger(date)` | 全市场龙虎榜 | 东财 |
-
-### 资金面 (§4)
-| 函数 | 用途 | 源 |
-|------|------|-----|
-| `eastmoney_datacenter(report_name, ...)` | 融资融券/大宗/股东户数/分红 | 东财 datacenter |
-
-### 新闻层 (§5)
-| 函数 | 用途 | 源 |
-|------|------|-----|
-| `eastmoney_stock_news(code)` | 个股新闻 | 东财 |
-| `eastmoney_global_news()` | 全球7x24资讯 | 东财 |
-| `cls_telegraph()` | 财联社电报 | 财联社 |
-
-### 基础数据层 (§6)
-| 函数 | 用途 | 源 |
-|------|------|-----|
-| `eastmoney_stock_info(code)` | 行业/股本/市值/上市日期 | 东财 |
-| `sina_financial_report(code)` | 财报三表 | 新浪 |
-
-### 打板层 (§8)
-| 函数 | 用途 | 源 |
-|------|------|-----|
-| `em_limit_up_pools(date)` | 涨停/炸板/跌停/昨涨停四池 | 东财 push2ex |
-| `limit_up_sentiment(date)` | 炸板率/连板高度/梯队 | 组合计算 |
-
-### 舆情互动层 (§10)
-| 函数 | 用途 | 源 |
-|------|------|-----|
-| `cninfo_irm(code)` | 互动易问答 | 巨潮 |
-| `em_hot_rank()` | 东财人气榜 | 东财 |
-
-## 调用说明
-
-- **OHLCV数据**: 使用 `DataLoader` 类，符合 Vibe-Trading 的 `DataLoaderProtocol`，可用于回测
-- **扩展数据**: 直接导入对应函数，返回 Python dict/list
-- **东财限流**: 所有东财接口通过 `_em_get()` 统一限流（≥1s间隔+随机抖动）
-- **完整a-stock-data**: 其余未直接封装的端点，通过已安装的 `~/.claude/skills/a-stock-data/SKILL.md` 由 AI 直接执行

@@ -827,6 +827,7 @@
       "reviewedDataReports": "리포트",
       "reviewedDataAnnouncements": "공시",
       "reviewedDataPending": "검토 대기",
+      "reviewedDataNewsNote": "키워드 일치 뉴스, 개별 종목 특정이 아닐 수 있습니다.",
       "reviewedDataStockInfoUnavailable": "기본 정보 사용 불가",
       "reviewedDataDisclaimer": "읽기 전용 연구 데이터. 투자 조언이 아닙니다."
     },

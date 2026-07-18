@@ -827,6 +827,7 @@
       "reviewedDataReports": "تقارير",
       "reviewedDataAnnouncements": "إعلانات",
       "reviewedDataPending": "قيد المراجعة",
+      "reviewedDataNewsNote": "أخبار مطابقة بالكلمات المفتاحية، قد لا تكون خاصة بالشركة.",
       "reviewedDataStockInfoUnavailable": "معلومات أساسية غير متاحة",
       "reviewedDataDisclaimer": "بيانات بحثية للقراءة فقط. ليست نصيحة استثمارية."
     },

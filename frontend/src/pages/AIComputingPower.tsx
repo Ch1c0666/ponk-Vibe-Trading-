@@ -358,6 +358,11 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
                     </div>
                   )}
                 />
+                {dataEnv.data.news?.ok && Array.isArray(dataEnv.data.news.data) && dataEnv.data.news.data.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground/40 -mt-2">
+                    {t("aiComputing.template.reviewedDataNewsNote")}
+                  </p>
+                )}
                 {/* Reports */}
                 <FamilySection
                   label={t("aiComputing.template.reviewedDataReports")}

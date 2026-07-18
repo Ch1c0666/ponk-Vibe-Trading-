@@ -827,6 +827,7 @@
       "reviewedDataReports": "研报",
       "reviewedDataAnnouncements": "公告",
       "reviewedDataPending": "待审核",
+      "reviewedDataNewsNote": "关键词匹配新闻，可能非个股定向。",
       "reviewedDataStockInfoUnavailable": "基础资料暂不可用",
       "reviewedDataDisclaimer": "只读研究数据，不构成投资建议。"
     },

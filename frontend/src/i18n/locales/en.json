@@ -827,6 +827,7 @@
       "reviewedDataReports": "Reports",
       "reviewedDataAnnouncements": "Announcements",
       "reviewedDataPending": "Not reviewed",
+      "reviewedDataNewsNote": "Keyword-matched news, may not be company-specific.",
       "reviewedDataStockInfoUnavailable": "stock info unavailable",
       "reviewedDataDisclaimer": "Read-only research data. Not investment advice."
     },

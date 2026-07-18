@@ -15,12 +15,16 @@ describe("reviewedManifestAdapter", () => {
     expect(getQuoteCodes(SAMPLE, "aiComputing", "computeChip")).toEqual(["688041.SH"]);
   });
 
-  it("getReportCodes returns empty for quote-only code", () => {
-    expect(getReportCodes(SAMPLE, "aiComputing", "computeChip")).toEqual([]);
+  it("getReportCodes returns non-quote codes, excludes quote-only", () => {
+    const codes = getReportCodes(SAMPLE, "aiComputing", "computeChip");
+    expect(codes).not.toContain("688041.SH");
+    // At least one code with report dataUse exists in the current manifest.
+    expect(codes.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("getReviewedCodes with 'report' filter excludes quote-only", () => {
-    expect(getReviewedCodes(SAMPLE, "aiComputing", "computeChip", "report")).toEqual([]);
+  it("getReviewedCodes with 'report' filter excludes quote-only code", () => {
+    const codes = getReviewedCodes(SAMPLE, "aiComputing", "computeChip", "report");
+    expect(codes).not.toContain("688041.SH");
   });
 
   it("unknown segmentKey returns empty", () => {

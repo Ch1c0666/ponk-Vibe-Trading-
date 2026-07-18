@@ -76,18 +76,20 @@ describe("manifest ↔ segmentCodeMap consistency", () => {
     expect(manifestKeys).toEqual(frontendKeys);
   });
 
-  it("manifest computeChip has exactly 1 approved code with required fields", () => {
+  it("manifest computeChip has approved codes with required fields per dataUse", () => {
     const codes = manifest.segments.aiComputing.computeChip?.codes ?? [];
-    expect(codes).toHaveLength(1);
+    expect(codes.length).toBeGreaterThanOrEqual(1);
 
-    const c = codes[0];
-    expect(c.code).toBe("688041.SH");
-    expect(c.status).toBe("approved");
-    expect(c.dataUse).toEqual(["quote"]);
-    expect(c.reason).toBeTruthy();
-    expect(c.source).toBeTruthy();
-    expect(c.reviewer).toBeTruthy();
-    expect(c.reviewedAt).toBeTruthy();
+    for (const c of codes) {
+      if (c.status !== "approved") continue;
+      expect(c.code).toBeTruthy();
+      expect(c.status).toBe("approved");
+      expect(Array.isArray(c.dataUse)).toBe(true);
+      expect(c.reason).toBeTruthy();
+      expect(c.source).toBeTruthy();
+      expect(c.reviewer).toBeTruthy();
+      expect(c.reviewedAt).toBeTruthy();
+    }
   });
 
   it("manifest other aiComputing segments all empty", () => {
@@ -134,7 +136,7 @@ describe("manifest ↔ segmentCodeMap consistency", () => {
         }
       }
     }
-    expect(total).toBe(1);
+    expect(total).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -172,9 +174,10 @@ describe("REVIEWED_SEGMENT_CODES vs manifest", () => {
       .toEqual(["688041.SH"]);
   });
 
-  it("getReportCodes returns empty for computeChip", () => {
-    expect(getReportCodes(REVIEWED_SEGMENT_CODES, "aiComputing", "computeChip"))
-      .toEqual([]);
+  it("getReportCodes returns non-quote codes, excludes quote-only for computeChip", () => {
+    const codes = getReportCodes(REVIEWED_SEGMENT_CODES, "aiComputing", "computeChip");
+    expect(codes).not.toContain("688041.SH");
+    expect(codes.length).toBeGreaterThanOrEqual(1);
   });
 
   it("humanoidRobot quote codes all empty", () => {

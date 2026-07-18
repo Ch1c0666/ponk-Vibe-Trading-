@@ -249,4 +249,58 @@ describe("AIComputingPower page", () => {
       { mode: "real" },
     );
   });
+
+  // -- A-stock data panel ---------------------------------------------------
+
+  it("computeChip detail does NOT auto-fetch a-stock data on mount", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    renderAt("/ai-computing/computeChip");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it("computeChip detail shows reviewed A-share data panel", () => {
+    renderAt("/ai-computing/computeChip");
+    expect(screen.getByText("Reviewed A-Share Data")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Load Data" })).toBeInTheDocument();
+  });
+
+  it("data panel does NOT trigger fetch on mount, only on click", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true, source: "a-stock-data", code: "000000.SH", partial: false,
+        data: {
+          news: { ok: true, source: "eastmoney", data: [] },
+          fundamentals: { ok: true, source: "eastmoney+sina", data: { stock_info: null, financial_reports: { income_statement: [], balance_sheet: [], cash_flow: [] } } },
+          reports: { ok: true, source: "eastmoney+ths", data: { reports: [] } },
+          announcements: { ok: true, source: "cninfo", data: [] },
+        },
+      }),
+    });
+
+    renderAt("/ai-computing/computeChip");
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    await act(() => screen.getByRole("button", { name: "Load Data" }).click());
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    fetchSpy.mockRestore();
+  });
+
+  it("data panel does NOT call /api/reports/research", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, data: {} }),
+    });
+
+    renderAt("/ai-computing/computeChip");
+    await act(() => screen.getByRole("button", { name: "Load Data" }).click());
+
+    const url = fetchSpy.mock.calls[0][0] as string;
+    expect(url).not.toContain("/api/reports/research");
+    expect(url).not.toContain("/mcp");
+    fetchSpy.mockRestore();
+  });
 });

@@ -173,3 +173,74 @@ def test_provider_exception_is_enveloped():
     assert resp.status_code == 200
     assert payload["partial"] is True
     assert payload["data"]["quote"]["error_code"] == "provider_request_failed"
+
+
+def test_reports_tool_ok_false_propagates_error():
+    """When get_research_reports returns ok:false, the reports family
+    must propagate the error payload as-is (not wrap it)."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["report"]),
+    ), patch(
+        "src.tools.build_registry",
+    ) as registry:
+        tool = registry.return_value.get.return_value
+        tool.execute.return_value = json.dumps({
+            "ok": False,
+            "error": "no reports found",
+            "error_code": "no_data",
+        })
+
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=reports")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["reports"]["ok"] is False
+    assert payload["data"]["reports"]["error"] == "no reports found"
+    assert payload["data"]["reports"]["error_code"] == "no_data"
+    tool.execute.assert_called_once_with(q_type=0, code=_PLACEHOLDER, limit=10)
+
+
+def test_reports_tool_exception_is_enveloped():
+    """When get_research_reports throws, the reports family must return
+    provider_request_failed (not crash)."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["report"]),
+    ), patch(
+        "src.tools.build_registry",
+    ) as registry:
+        tool = registry.return_value.get.return_value
+        tool.execute.side_effect = RuntimeError("tool crash")
+
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=reports")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["reports"]["ok"] is False
+    assert payload["data"]["reports"]["error_code"] == "provider_request_failed"
+    assert "tool crash" in payload["data"]["reports"]["error"]
+    tool.execute.assert_called_once()
+
+
+def test_reports_tool_unavailable_is_enveloped():
+    """When get_research_reports tool is not in registry, the reports
+    family must return provider_request_failed."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["report"]),
+    ), patch(
+        "src.tools.build_registry",
+    ) as registry:
+        registry.return_value.get.return_value = None  # tool not found
+
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=reports")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["reports"]["ok"] is False
+    assert payload["data"]["reports"]["error_code"] == "provider_request_failed"
+    registry.return_value.get.assert_called_once_with("get_research_reports")

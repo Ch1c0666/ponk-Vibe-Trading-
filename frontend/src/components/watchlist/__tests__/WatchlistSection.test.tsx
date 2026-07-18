@@ -16,6 +16,12 @@ import type { WatchlistData } from "@/lib/watchlist/watchlistTypes";
 const fetchSpy = vi.fn();
 globalThis.fetch = fetchSpy;
 
+const mockLoadWatchlistQuotes = vi.fn();
+
+vi.mock("@/lib/watchlist/watchlistService", () => ({
+  loadWatchlistQuotes: (...args: unknown[]) => mockLoadWatchlistQuotes(...args),
+}));
+
 function emptyData(): WatchlistData {
   return { version: 1, updatedAt: new Date().toISOString(), items: [] };
 }
@@ -89,6 +95,13 @@ async function addCodeAt(user: ReturnType<typeof userEvent.setup>, code: string,
 beforeEach(() => {
   localStorage.clear();
   fetchSpy.mockReset();
+  mockLoadWatchlistQuotes.mockReset();
+  // Default: return idle for all codes so existing tests don't break
+  mockLoadWatchlistQuotes.mockImplementation(async (codes: string[]) => {
+    const map = new Map();
+    for (const c of codes) map.set(c, { kind: "idle" });
+    return map;
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -317,5 +330,193 @@ describe("WatchlistSection safety", () => {
     const removeBtns = screen.getAllByRole("button", { name: "Remove" });
     await h.user.click(removeBtns[0]);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quote fetching — Load Quotes button
+// ---------------------------------------------------------------------------
+
+describe("WatchlistSection Load Quotes button", () => {
+  it("shows Load Quotes button for A-share section with items", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    expect(screen.getByRole("button", { name: "Load Quotes" })).toBeInTheDocument();
+  });
+
+  it("does NOT show Load Quotes button when empty", () => {
+    renderSection("a");
+    expect(screen.queryByRole("button", { name: "Load Quotes" })).not.toBeInTheDocument();
+  });
+
+  it("does NOT show Load Quotes button for US section even with items", async () => {
+    const h = renderSection("us");
+    await addCode(h.user, "MOCK");
+    expect(screen.queryByRole("button", { name: "Load Quotes" })).not.toBeInTheDocument();
+  });
+
+  it("disables Load Quotes button while loading", async () => {
+    mockLoadWatchlistQuotes.mockImplementation(
+      () => new Promise(() => {}),
+    );
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Load Quotes" }));
+
+    expect(screen.getByRole("button", { name: "Loading…" })).toBeDisabled();
+  });
+
+  it("clicking Load Quotes calls service with correct codes", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+
+    await h.user.click(screen.getByRole("button", { name: "Load Quotes" }));
+
+    expect(mockLoadWatchlistQuotes).toHaveBeenCalledTimes(1);
+    const codes = mockLoadWatchlistQuotes.mock.calls[0][0] as string[];
+    expect(codes).toContain("000000.SH");
+    expect(codes).toContain("000000.SZ");
+    expect(mockLoadWatchlistQuotes.mock.calls[0][1]).toEqual({ mode: "real" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quote state rendering
+// ---------------------------------------------------------------------------
+
+describe("WatchlistSection quote state rendering", () => {
+  it("renders idle quote state by default", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    expect(screen.getByText("Not loaded")).toBeInTheDocument();
+  });
+
+  it("renders loaded quote with price and change", async () => {
+    mockLoadWatchlistQuotes.mockResolvedValueOnce(
+      new Map([
+        [
+          "000000.SH",
+          {
+            kind: "loaded",
+            data: {
+              name: "Test Corp",
+              price: 100.5,
+              prev_close: null,
+              open: null,
+              high: null,
+              low: null,
+              change_pct: 2.35,
+              pe_ttm: null,
+              pb: null,
+            },
+          },
+        ],
+      ]),
+    );
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Load Quotes" }));
+
+    expect(screen.getByText("100.50")).toBeInTheDocument();
+    expect(screen.getByText("+2.35%")).toBeInTheDocument();
+    expect(screen.getByText("Test Corp")).toBeInTheDocument();
+  });
+
+  it("renders not_reviewed state as 'Pending review'", async () => {
+    mockLoadWatchlistQuotes.mockResolvedValueOnce(
+      new Map([["000000.SH", { kind: "not_reviewed" }]]),
+    );
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Load Quotes" }));
+
+    expect(screen.getByText("Pending review")).toBeInTheDocument();
+  });
+
+  it("renders error state with message", async () => {
+    mockLoadWatchlistQuotes.mockResolvedValueOnce(
+      new Map([["000000.SH", { kind: "error", message: "Network failure" }]]),
+    );
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Load Quotes" }));
+
+    expect(screen.getByText("Network failure")).toBeInTheDocument();
+  });
+
+  it("renders negative change in red", async () => {
+    mockLoadWatchlistQuotes.mockResolvedValueOnce(
+      new Map([
+        [
+          "000000.SH",
+          {
+            kind: "loaded",
+            data: {
+              name: "Test Corp",
+              price: 95.0,
+              prev_close: null,
+              open: null,
+              high: null,
+              low: null,
+              change_pct: -3.5,
+              pe_ttm: null,
+              pb: null,
+            },
+          },
+        ],
+      ]),
+    );
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Load Quotes" }));
+
+    expect(screen.getByText("-3.50%")).toBeInTheDocument();
+  });
+
+  it("does NOT change quote state on add or remove", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    expect(screen.getByText("Not loaded")).toBeInTheDocument();
+    await addCode(h.user, "000000.SZ");
+    const idleElements = screen.getAllByText("Not loaded");
+    expect(idleElements).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Safety (quote fetching)
+// ---------------------------------------------------------------------------
+
+describe("WatchlistSection quote safety", () => {
+  it("does NOT trigger /api/reports/research", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await h.user.click(screen.getByRole("button", { name: "Load Quotes" }));
+    expect(document.body.textContent).not.toMatch(/\/api\/reports\/research/);
+  });
+
+  it("does NOT reference /mcp in rendered content", () => {
+    renderSection("a");
+    expect(document.body.textContent).not.toMatch(/\/mcp/);
+  });
+
+  it("does NOT contain real A-share stock codes in rendered content", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    // Only placeholder 000000.SH/000000.SZ allowed; no real 6-digit codes.
+    expect(document.body.textContent).not.toMatch(/[1-9]\d{5}\.(SH|SZ|BJ)/);
+  });
+
+  it("US section has no Load Quotes button and never calls service", async () => {
+    const h = renderSection("us");
+    await addCode(h.user, "MOCK");
+    expect(screen.queryByRole("button", { name: "Load Quotes" })).not.toBeInTheDocument();
+    expect(mockLoadWatchlistQuotes).not.toHaveBeenCalled();
   });
 });

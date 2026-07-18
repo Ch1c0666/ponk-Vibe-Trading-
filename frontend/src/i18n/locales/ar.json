@@ -955,6 +955,9 @@
     "watchlistNotesLabel": "ملاحظات (اختياري)",
     "watchlistNotesPlaceholder": "ملاحظة اختيارية",
     "watchlistQuoteIdle": "لم يتم التحميل",
+    "watchlistLoadQuotes": "تحميل الأسعار",
+    "watchlistQuoteLoading": "جار التحميل…",
+    "watchlistQuoteNotReviewed": "قيد المراجعة",
     "watchlistRemove": "إزالة",
     "watchlistUSNotSupported": "أسعار الأسهم الأمريكية غير متاحة بعد"
   }

@@ -955,6 +955,9 @@
     "watchlistNotesLabel": "メモ（任意）",
     "watchlistNotesPlaceholder": "任意のメモ",
     "watchlistQuoteIdle": "未読込",
+    "watchlistLoadQuotes": "株価読込",
+    "watchlistQuoteLoading": "読込中…",
+    "watchlistQuoteNotReviewed": "審査待ち",
     "watchlistRemove": "削除",
     "watchlistUSNotSupported": "米国株の株価はまだ利用できません"
   }

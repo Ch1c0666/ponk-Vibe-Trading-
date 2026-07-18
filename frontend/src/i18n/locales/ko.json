@@ -955,6 +955,9 @@
     "watchlistNotesLabel": "메모 (선택)",
     "watchlistNotesPlaceholder": "선택적 메모",
     "watchlistQuoteIdle": "로드되지 않음",
+    "watchlistLoadQuotes": "시세 로드",
+    "watchlistQuoteLoading": "로딩 중…",
+    "watchlistQuoteNotReviewed": "검토 대기 중",
     "watchlistRemove": "삭제",
     "watchlistUSNotSupported": "미국 주식 시세는 아직 사용할 수 없습니다"
   }

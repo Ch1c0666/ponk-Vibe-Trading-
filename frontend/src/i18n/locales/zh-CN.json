@@ -955,6 +955,9 @@
     "watchlistNotesLabel": "备注（可选）",
     "watchlistNotesPlaceholder": "可选备注",
     "watchlistQuoteIdle": "未加载",
+    "watchlistLoadQuotes": "加载行情",
+    "watchlistQuoteLoading": "加载中…",
+    "watchlistQuoteNotReviewed": "待审核",
     "watchlistRemove": "删除",
     "watchlistUSNotSupported": "美股行情暂不支持"
   }

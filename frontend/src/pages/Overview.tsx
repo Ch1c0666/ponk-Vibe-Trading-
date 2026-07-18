@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, RefreshCw } from "lucide-react";
+import { LayoutDashboard, RefreshCw, Download, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   loadIndexQuotes,
@@ -11,7 +11,13 @@ import {
   type IndexQuoteView,
 } from "@/lib/overview/indexQuoteAdapter";
 import { WatchlistSection } from "@/components/watchlist/WatchlistSection";
-import { loadWatchlistData } from "@/lib/watchlist/watchlistStorage";
+import { loadWatchlistData, saveWatchlistData } from "@/lib/watchlist/watchlistStorage";
+import {
+  exportWatchlistBackup,
+  parseWatchlistBackup,
+  backupFileName,
+  triggerBackupDownload,
+} from "@/lib/watchlist/watchlistBackup";
 import type { WatchlistData } from "@/lib/watchlist/watchlistTypes";
 
 // ---------------------------------------------------------------------------
@@ -194,6 +200,8 @@ export function Overview() {
   const [indexView, setIndexView] = useState<IndexQuoteView>({ kind: "disabled" });
   const [loading, setLoading] = useState(false);
   const [watchlistData, setWatchlistData] = useState<WatchlistData>(() => loadWatchlistData());
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clean up the mock-refresh timer on unmount.
@@ -223,6 +231,43 @@ export function Overview() {
       setLoading(false);
     }
   }, [loading, t]);
+
+  // -- Export / Import -------------------------------------------------------
+
+  const handleExport = useCallback(() => {
+    const json = exportWatchlistBackup(watchlistData);
+    triggerBackupDownload(json, backupFileName());
+  }, [watchlistData]);
+
+  const handleImportClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleImportFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = parseWatchlistBackup(reader.result as string);
+        if (result.ok) {
+          saveWatchlistData(result.data);
+          setWatchlistData(result.data);
+          setImportError(null);
+        } else {
+          setImportError(result.error);
+        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      };
+      reader.onerror = () => {
+        setImportError("Failed to read file");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      };
+      reader.readAsText(file);
+    },
+    [],
+  );
 
   return (
     <div className="min-h-screen p-6 lg:p-8">
@@ -298,6 +343,50 @@ export function Overview() {
           data={watchlistData}
           onChange={setWatchlistData}
         />
+
+        {/* ── Backup: Export / Import ──────────────────────────────────── */}
+        <section className="flex flex-col gap-2 border-t pt-4">
+          <h2 className="text-sm font-semibold tracking-tight">
+            {t("overview.watchlistBackupTitle")}
+          </h2>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExport}
+              aria-label={t("overview.watchlistExport")}
+              className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {t("overview.watchlistExport")}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleImportClick}
+              aria-label={t("overview.watchlistImport")}
+              className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {t("overview.watchlistImport")}
+            </button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json"
+              onChange={handleImportFile}
+              className="hidden"
+              aria-hidden
+            />
+          </div>
+
+          {importError !== null && (
+            <p className="text-[11px] text-red-600 dark:text-red-400">
+              {t("overview.watchlistImportError")}: {importError}
+            </p>
+          )}
+        </section>
       </div>
     </div>
   );

@@ -962,6 +962,10 @@
     "watchlistMoveDown": "아래로 이동",
     "watchlistEditNotes": "메모 편집",
     "watchlistRemove": "삭제",
+    "watchlistBackupTitle": "백업",
+    "watchlistExport": "JSON 내보내기",
+    "watchlistImport": "JSON 가져오기",
+    "watchlistImportError": "가져오기 실패",
     "watchlistUSNotSupported": "미국 주식 시세는 아직 사용할 수 없습니다"
   }
 }

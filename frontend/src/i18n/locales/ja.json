@@ -962,6 +962,10 @@
     "watchlistMoveDown": "下へ移動",
     "watchlistEditNotes": "メモを編集",
     "watchlistRemove": "削除",
+    "watchlistBackupTitle": "バックアップ",
+    "watchlistExport": "JSON エクスポート",
+    "watchlistImport": "JSON インポート",
+    "watchlistImportError": "インポート失敗",
     "watchlistUSNotSupported": "米国株の株価はまだ利用できません"
   }
 }

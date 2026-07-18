@@ -191,4 +191,30 @@ describe("Overview page", () => {
     const bodyText = document.body.textContent ?? "";
     expect(bodyText).not.toMatch(/\b[A-Z]{1,5}\s+—\b/);
   });
+
+  // -- Backup UI ------------------------------------------------------------
+
+  it("renders Export JSON button", () => {
+    renderOverview();
+    expect(screen.getByRole("button", { name: "Export JSON" })).toBeInTheDocument();
+  });
+
+  it("renders Import JSON button", () => {
+    renderOverview();
+    expect(screen.getByRole("button", { name: "Import JSON" })).toBeInTheDocument();
+  });
+
+  it("has hidden file input for import", () => {
+    renderOverview();
+    const input = document.querySelector('input[type="file"][accept=".json"]');
+    expect(input).not.toBeNull();
+    expect((input as HTMLInputElement).className).toContain("hidden");
+  });
+
+  it("export does NOT trigger fetch", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    renderOverview();
+    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });

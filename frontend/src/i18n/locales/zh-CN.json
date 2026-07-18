@@ -962,6 +962,10 @@
     "watchlistMoveDown": "下移",
     "watchlistEditNotes": "编辑备注",
     "watchlistRemove": "删除",
+    "watchlistBackupTitle": "备份",
+    "watchlistExport": "导出 JSON",
+    "watchlistImport": "导入 JSON",
+    "watchlistImportError": "导入失败",
     "watchlistUSNotSupported": "美股行情暂不支持"
   }
 }

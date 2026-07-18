@@ -962,6 +962,10 @@
     "watchlistMoveDown": "تحريك للأسفل",
     "watchlistEditNotes": "تعديل الملاحظات",
     "watchlistRemove": "إزالة",
+    "watchlistBackupTitle": "نسخ احتياطي",
+    "watchlistExport": "تصدير JSON",
+    "watchlistImport": "استيراد JSON",
+    "watchlistImportError": "فشل الاستيراد",
     "watchlistUSNotSupported": "أسعار الأسهم الأمريكية غير متاحة بعد"
   }
 }

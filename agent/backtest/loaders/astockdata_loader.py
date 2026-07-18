@@ -44,6 +44,7 @@ ZTB_UT = "7eea3edcaed734bea9cbfc24409ed989"  # push2ex UT token
 _TENCENT_KLIN_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
 _TENCENT_QUOTE_URL = "https://qt.gtimg.cn/q="
 _DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+_CNINFO_ORGID_MAP: Optional[Dict[str, str]] = None
 # ---------------------------------------------------------------------------
 # Eastmoney throttled session — mirrors a-stock-data ``em_get``
 # ---------------------------------------------------------------------------
@@ -619,6 +620,153 @@ def eastmoney_stock_info(code: str) -> Optional[Dict[str, Any]]:
     except Exception as exc:
         logger.warning("eastmoney_stock_info for %s: %s", code, exc)
         return None
+
+
+def sina_financial_report(
+    code: str,
+    report_type: str = "lrb",
+    num: int = 8,
+) -> List[Dict[str, Any]]:
+    """Sina financial statements.
+
+    ``report_type`` is one of ``fzb`` (balance sheet), ``lrb`` (income
+    statement), or ``llb`` (cash-flow statement).  Returns recent period
+    records, fail-closed to an empty list on provider errors.
+    """
+    if report_type not in {"fzb", "lrb", "llb"}:
+        return []
+    bare = code.upper().replace(".SH", "").replace(".SZ", "").replace(".BJ", "")
+    prefix = "sh" if bare.startswith("6") else "sz"
+    url = "https://quotes.sina.cn/cn/api/openapi.php/CompanyFinanceService.getFinanceReport2022"
+    capped_num = _bounded_int(num, default=8, lower=1, upper=20)
+    params = {
+        "paperCode": f"{prefix}{bare}",
+        "source": report_type,
+        "type": "0",
+        "page": "1",
+        "num": str(capped_num),
+    }
+    try:
+        resp = requests.get(url, params=params, headers={"User-Agent": UA}, timeout=15)
+        report_list = (
+            resp.json().get("result", {}).get("data", {}).get("report_list", {})
+            or {}
+        )
+        rows: List[Dict[str, Any]] = []
+        for period in sorted(report_list.keys(), reverse=True)[:capped_num]:
+            obj = report_list[period]
+            rec: Dict[str, Any] = {
+                "report_period": f"{period[:4]}-{period[4:6]}-{period[6:8]}",
+            }
+            for item in obj.get("data", []) or []:
+                title = item.get("item_title", "")
+                value = item.get("item_value")
+                if not title or value is None:
+                    continue
+                rec[title] = value
+                yoy = item.get("item_tongbi")
+                if yoy not in (None, ""):
+                    rec[f"{title}_yoy"] = yoy
+            rows.append(rec)
+        return rows
+    except Exception as exc:
+        logger.warning("sina_financial_report for %s: %s", code, exc)
+        return []
+
+
+def _cninfo_ts_to_date(value: Any) -> str:
+    """Convert cninfo announcementTime milliseconds to YYYY-MM-DD."""
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value / 1000).strftime("%Y-%m-%d")
+    return str(value)[:10] if value else ""
+
+
+def _bounded_int(value: Any, *, default: int, lower: int, upper: int) -> int:
+    """Return *value* coerced into ``[lower, upper]`` with a default fallback."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(lower, min(parsed, upper))
+
+
+def _cninfo_orgid(code: str) -> str:
+    """Resolve cninfo orgId, with a deterministic fallback."""
+    global _CNINFO_ORGID_MAP
+    bare = code.upper().replace(".SH", "").replace(".SZ", "").replace(".BJ", "")
+    if _CNINFO_ORGID_MAP is None:
+        try:
+            resp = requests.get(
+                "https://www.cninfo.com.cn/new/data/szse_stock.json",
+                headers={"User-Agent": UA},
+                timeout=15,
+            )
+            stock_list = resp.json().get("stockList", []) or []
+            _CNINFO_ORGID_MAP = {
+                str(item.get("code")): str(item.get("orgId"))
+                for item in stock_list
+                if item.get("code") and item.get("orgId")
+            }
+        except Exception as exc:
+            logger.warning("cninfo orgId mapping failed: %s", exc)
+            _CNINFO_ORGID_MAP = {}
+    org = _CNINFO_ORGID_MAP.get(bare)
+    if org:
+        return org
+    if bare.startswith("6"):
+        return f"gssh0{bare}"
+    if bare.startswith(("8", "4")):
+        return f"gsbj0{bare}"
+    return f"gssz0{bare}"
+
+
+def cninfo_announcements(code: str, page_size: int = 30) -> List[Dict[str, Any]]:
+    """Cninfo announcement full-text search.
+
+    Returns ``[{title, type, date, url}]`` and fail-closes to ``[]`` on
+    provider errors.
+    """
+    bare = code.upper().replace(".SH", "").replace(".SZ", "").replace(".BJ", "")
+    capped_page_size = _bounded_int(page_size, default=30, lower=1, upper=50)
+    url = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
+    payload = {
+        "stock": f"{bare},{_cninfo_orgid(bare)}",
+        "tabName": "fulltext",
+        "pageSize": str(capped_page_size),
+        "pageNum": "1",
+        "column": "",
+        "category": "",
+        "plate": "",
+        "seDate": "",
+        "searchkey": "",
+        "secid": "",
+        "sortName": "",
+        "sortType": "",
+        "isHLtitle": "true",
+    }
+    headers = {
+        "User-Agent": UA,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://www.cninfo.com.cn/new/disclosure",
+        "Origin": "https://www.cninfo.com.cn",
+    }
+    try:
+        resp = requests.post(url, data=payload, headers=headers, timeout=15)
+        rows = []
+        for item in resp.json().get("announcements", []) or []:
+            rows.append({
+                "title": item.get("announcementTitle", ""),
+                "type": item.get("announcementTypeName", ""),
+                "date": _cninfo_ts_to_date(item.get("announcementTime")),
+                "url": (
+                    "https://www.cninfo.com.cn/new/disclosure/detail"
+                    f"?annoId={item.get('announcementId', '')}"
+                ),
+            })
+        return rows
+    except Exception as exc:
+        logger.warning("cninfo_announcements for %s: %s", code, exc)
+        return []
 
 
 # ===================================================================

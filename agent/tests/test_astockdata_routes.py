@@ -1,0 +1,175 @@
+"""Tests for GET /api/a-stocks/data — offline, no real provider calls."""
+
+from __future__ import annotations
+
+import json
+from unittest.mock import Mock, patch
+
+from fastapi.testclient import TestClient
+
+from api_server import app
+
+client = TestClient(app)
+
+_PLACEHOLDER = "000000.SH"
+
+
+def _manifest_for(code: str, data_use: list[str]) -> dict:
+    return {
+        "version": 1,
+        "segments": {
+            "aiComputing": {
+                "computeChip": {
+                    "codes": [{
+                        "code": code,
+                        "status": "approved",
+                        "reason": "Syntactic placeholder for testing",
+                        "source": "Test fixture",
+                        "reviewer": "test-suite",
+                        "reviewedAt": "2026-07-18",
+                        "dataUse": data_use,
+                    }],
+                },
+                "hbm": {"codes": []},
+            },
+            "humanoidRobot": {
+                "harmonicReducer": {"codes": []},
+            },
+        },
+    }
+
+
+def test_unknown_param_rejected_without_provider_call():
+    with patch("src.api.astockdata_routes._FETCHERS") as fetchers:
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&q_type=1")
+
+    assert resp.status_code == 400
+    assert resp.json()["error_code"] == "invalid_argument"
+    assert not fetchers.__getitem__.called
+
+
+def test_invalid_include_rejected():
+    resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=broker")
+
+    assert resp.status_code == 400
+    assert resp.json()["error_code"] == "invalid_argument"
+
+
+def test_unreviewed_category_does_not_call_provider():
+    fetch_reports = Mock(return_value={"ok": True})
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["quote"]),
+    ), patch(
+        "src.api.astockdata_routes._FETCHERS",
+        {"reports": fetch_reports},
+    ):
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=reports")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["reports"]["error_code"] == "code_not_reviewed"
+    fetch_reports.assert_not_called()
+
+
+def test_quote_uses_quote_datause_only():
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["quote"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.tencent_quote",
+        return_value={"000000": {"name": "Mock", "price": 1.0}},
+    ) as quote:
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=quote")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is False
+    assert payload["data"]["quote"]["ok"] is True
+    assert payload["data"]["quote"]["data"]["price"] == 1.0
+    quote.assert_called_once_with([_PLACEHOLDER])
+
+
+def test_all_families_require_their_own_datause_and_return_payloads():
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(
+            _PLACEHOLDER,
+            ["quote", "report", "news", "fundamental", "announcement"],
+        ),
+    ), patch(
+        "backtest.loaders.astockdata_loader.tencent_quote",
+        return_value={"000000": {"name": "Mock", "price": 1.0}},
+    ), patch(
+        "src.tools.build_registry",
+    ) as registry, patch(
+        "backtest.loaders.astockdata_loader.eastmoney_stock_news",
+        return_value=[{"title": "Mock news"}],
+    ), patch(
+        "backtest.loaders.astockdata_loader.eastmoney_stock_info",
+        return_value={"code": "000000", "name": "Mock"},
+    ), patch(
+        "backtest.loaders.astockdata_loader.sina_financial_report",
+        return_value=[{"report_period": "2026-03-31"}],
+    ), patch(
+        "backtest.loaders.astockdata_loader.cninfo_announcements",
+        return_value=[{"title": "Mock announcement"}],
+    ) as announcements:
+        tool = registry.return_value.get.return_value
+        tool.execute.return_value = json.dumps({
+            "ok": True,
+            "source": "eastmoney+ths",
+            "data": {"reports": [{"title": "Mock report"}]},
+        })
+
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}"
+            "&include=quote,reports,news,fundamentals,announcements&limit=3"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is False
+    assert payload["data"]["quote"]["ok"] is True
+    assert payload["data"]["reports"]["data"]["reports"][0]["title"] == "Mock report"
+    assert payload["data"]["news"]["data"][0]["title"] == "Mock news"
+    assert payload["data"]["fundamentals"]["source"] == "eastmoney+sina"
+    assert payload["data"]["fundamentals"]["data"]["stock_info"]["name"] == "Mock"
+    assert (
+        payload["data"]["fundamentals"]["data"]["financial_reports"]
+        ["income_statement"][0]["report_period"]
+    ) == "2026-03-31"
+    assert payload["data"]["announcements"]["data"][0]["title"] == "Mock announcement"
+    tool.execute.assert_called_once_with(q_type=0, code=_PLACEHOLDER, limit=3)
+    announcements.assert_called_once_with(_PLACEHOLDER, page_size=3)
+
+
+def test_report_only_datause_does_not_allow_quote():
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["report"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.tencent_quote",
+    ) as quote:
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=quote")
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["quote"]["error_code"] == "code_not_reviewed"
+    quote.assert_not_called()
+
+
+def test_provider_exception_is_enveloped():
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["quote"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.tencent_quote",
+        side_effect=RuntimeError("network down"),
+    ):
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=quote")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["quote"]["error_code"] == "provider_request_failed"

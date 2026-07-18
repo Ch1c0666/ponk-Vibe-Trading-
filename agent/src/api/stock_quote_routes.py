@@ -61,13 +61,14 @@ def _load_manifest() -> dict[str, Any] | None:
     return manifest
 
 
-def get_reviewed_stock_codes() -> set[str]:
-    """Return the set of manually reviewed & approved A-share codes.
+def get_reviewed_stock_codes_for(data_use_filter: str) -> set[str]:
+    """Return manually reviewed & approved A-share codes for one data use.
 
     Reads from ``agent/config/reviewed_segment_codes.json``.  Only codes with
-    ``"status": "approved"`` and valid format are included.  Disabled codes,
-    missing required fields, and invalid entries are silently skipped (logged
-    as warnings).
+    ``"status": "approved"``, valid format, required audit fields, and
+    ``dataUse`` containing *data_use_filter* are included.  Disabled codes,
+    missing required fields, wrong data uses, and invalid entries are silently
+    skipped (logged as warnings).
 
     On any manifest load failure the returned set is empty — fail-closed.
     """
@@ -101,17 +102,23 @@ def get_reviewed_stock_codes() -> set[str]:
                 # Non-empty code item must carry mandatory audit fields.
                 if not _has_required_fields(entry, scope_name, segment_key, raw_code):
                     continue
-                # Must be explicitly approved for quote use.
+                # Must be explicitly approved for the requested data use.
                 data_use = entry.get("dataUse")
-                if not isinstance(data_use, list) or "quote" not in data_use:
+                if not isinstance(data_use, list) or data_use_filter not in data_use:
                     logger.warning(
-                        "reviewed_codes: skipping %s in %s/%s — dataUse missing or excludes 'quote'",
+                        "reviewed_codes: skipping %s in %s/%s — dataUse missing or excludes %r",
                         raw_code, scope_name, segment_key,
+                        data_use_filter,
                     )
                     continue
                 codes.add(raw_code)
 
     return codes
+
+
+def get_reviewed_stock_codes() -> set[str]:
+    """Return the set of manually reviewed & quote-approved A-share codes."""
+    return get_reviewed_stock_codes_for("quote")
 
 
 def _has_required_fields(

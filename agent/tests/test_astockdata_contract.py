@@ -603,6 +603,104 @@ class AstockdataOfflineContractTests(unittest.TestCase):
         self.assertEqual(envelope["details"]["q_type"], 1)
         shared_fetch.assert_not_called()
 
+    def test_sina_financial_report_parses_report_list_shape(self) -> None:
+        response = SimpleNamespace(
+            json=lambda: {
+                "result": {
+                    "data": {
+                        "report_list": {
+                            "20260331": {
+                                "data": [
+                                    {
+                                        "item_title": "净利润",
+                                        "item_value": "123.45",
+                                        "item_tongbi": "12.3%",
+                                    },
+                                    {
+                                        "item_title": "营业收入",
+                                        "item_value": "456.78",
+                                        "item_tongbi": "",
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        )
+
+        with patch.object(
+            astockdata_loader.requests,
+            "get",
+            return_value=response,
+        ) as get:
+            rows = astockdata_loader.sina_financial_report(
+                "000000.SH",
+                "lrb",
+                num=1,
+            )
+
+        self.assertEqual(
+            rows,
+            [{
+                "report_period": "2026-03-31",
+                "净利润": "123.45",
+                "净利润_yoy": "12.3%",
+                "营业收入": "456.78",
+            }],
+        )
+        self.assertEqual(
+            get.call_args.kwargs["params"]["paperCode"],
+            "sz000000",
+        )
+        self.assertEqual(get.call_args.kwargs["params"]["source"], "lrb")
+
+    def test_cninfo_announcements_parses_rows_with_dynamic_orgid(self) -> None:
+        org_response = SimpleNamespace(
+            json=lambda: {
+                "stockList": [{"code": "000000", "orgId": "gssz000000"}],
+            },
+        )
+        announcement_response = SimpleNamespace(
+            json=lambda: {
+                "announcements": [{
+                    "announcementTitle": "Mock announcement",
+                    "announcementTypeName": "临时公告",
+                    "announcementTime": 1784505600000,
+                    "announcementId": "ANN-001",
+                }],
+            },
+        )
+
+        with patch.object(astockdata_loader, "_CNINFO_ORGID_MAP", None), patch.object(
+            astockdata_loader.requests,
+            "get",
+            return_value=org_response,
+        ), patch.object(
+            astockdata_loader.requests,
+            "post",
+            return_value=announcement_response,
+        ) as post:
+            rows = astockdata_loader.cninfo_announcements(
+                "000000.SH",
+                page_size=3,
+            )
+
+        self.assertEqual(
+            rows,
+            [{
+                "title": "Mock announcement",
+                "type": "临时公告",
+                "date": "2026-07-20",
+                "url": "https://www.cninfo.com.cn/new/disclosure/detail?annoId=ANN-001",
+            }],
+        )
+        self.assertEqual(
+            post.call_args.kwargs["data"]["stock"],
+            "000000,gssz000000",
+        )
+        self.assertEqual(post.call_args.kwargs["data"]["pageSize"], "3")
+
     def test_registry_contains_astockdata_in_reviewed_order(self) -> None:
         self.assertIn("astockdata", loader_registry.VALID_SOURCES)
         self.assertEqual(

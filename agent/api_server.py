@@ -237,6 +237,10 @@ register_research_report_routes(app)
 from src.api.stock_quote_routes import register_stock_quote_routes  # noqa: E402
 register_stock_quote_routes(app)
 
+# --- A-stock-data aggregate ---
+from src.api.astockdata_routes import register_astockdata_routes  # noqa: E402
+register_astockdata_routes(app)
+
 # --- Channels ---
 from src.api.channels_routes import register_channels_routes  # noqa: E402
 register_channels_routes(app)

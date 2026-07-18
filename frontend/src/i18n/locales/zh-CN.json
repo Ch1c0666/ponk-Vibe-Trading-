@@ -819,7 +819,15 @@
       "targetPlaceholder": "标的 {{n}}",
       "reviewedQuoteLabel": "已审核标的行情",
       "reviewedQuoteLoad": "加载行情",
-      "reviewedQuoteDisclaimer": "仅用于产业链研究，不构成投资建议。"
+      "reviewedQuoteDisclaimer": "仅用于产业链研究，不构成投资建议。",
+      "reviewedDataLabel": "已审核 A 股数据",
+      "reviewedDataLoad": "加载数据",
+      "reviewedDataNews": "新闻",
+      "reviewedDataFundamentals": "基本面",
+      "reviewedDataReports": "研报",
+      "reviewedDataAnnouncements": "公告",
+      "reviewedDataPending": "待审核",
+      "reviewedDataDisclaimer": "只读研究数据，不构成投资建议。"
     },
     "structureDesc": "AI 算力产业链静态结构图。以下展示上游材料/芯片、中游模块/散热、下游服务器/云厂商的层级关系。所有节点均为空框架占位，公司名称与数据将在后续版本补充。",
     "structure": {

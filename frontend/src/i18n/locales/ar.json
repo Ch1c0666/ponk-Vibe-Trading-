@@ -819,7 +819,15 @@
       "targetPlaceholder": "الهدف {{n}}",
       "reviewedQuoteLabel": "سعر السهم المراجع",
       "reviewedQuoteLoad": "تحميل السعر",
-      "reviewedQuoteDisclaimer": "لأغراض بحث سلسلة التوريد فقط. ليست نصيحة استثمارية."
+      "reviewedQuoteDisclaimer": "لأغراض بحث سلسلة التوريد فقط. ليست نصيحة استثمارية.",
+      "reviewedDataLabel": "بيانات الأسهم A المراجعة",
+      "reviewedDataLoad": "تحميل البيانات",
+      "reviewedDataNews": "أخبار",
+      "reviewedDataFundamentals": "الأساسيات",
+      "reviewedDataReports": "تقارير",
+      "reviewedDataAnnouncements": "إعلانات",
+      "reviewedDataPending": "قيد المراجعة",
+      "reviewedDataDisclaimer": "بيانات بحثية للقراءة فقط. ليست نصيحة استثمارية."
     },
     "structureDesc": "مخطط هيكلي ثابت لسلسلة توريد حوسبة الذكاء الاصطناعي. يوضح الطبقات: المواد/الرقاقات الأولية، والوحدات/التبريد الوسيطة، والخوادم/مزودي السحابة النهائية.",
     "structure": {

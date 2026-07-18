@@ -26,7 +26,7 @@ export interface ManifestData {
   segments: Record<string, Record<string, ManifestSegment>>;
 }
 
-export type DataUseFilter = "quote" | "report";
+export type DataUseFilter = "quote" | "report" | "news" | "fundamental" | "announcement";
 
 /**
  * Extract codes from a manifest that are approved and whose dataUse includes
@@ -74,4 +74,27 @@ export function getReportCodes(
   segmentKey: string,
 ): string[] {
   return getReviewedCodes(manifest, scope, segmentKey, "report");
+}
+
+/** Get codes approved for any non-quote dataUse (news, fundamental, report, announcement). */
+export function getNonQuoteCodes(
+  manifest: ManifestData | null,
+  scope: string,
+  segmentKey: string,
+): string[] {
+  if (!manifest?.segments) return [];
+  const scopeData = manifest.segments[scope];
+  if (!scopeData) return [];
+  const segment = scopeData[segmentKey];
+  if (!segment?.codes) return [];
+
+  const nonQuote: DataUseFilter[] = ["news", "fundamental", "report", "announcement"];
+  return segment.codes
+    .filter(
+      (c) =>
+        c.status === "approved" &&
+        Array.isArray(c.dataUse) &&
+        c.dataUse.some((u) => nonQuote.includes(u as DataUseFilter)),
+    )
+    .map((c) => c.code);
 }

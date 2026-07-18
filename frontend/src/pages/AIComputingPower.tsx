@@ -28,7 +28,11 @@ import {
   loadStockQuote,
   type StockQuoteEnvelope,
 } from "@/lib/reviewedCodes/stockQuoteService";
-import { getQuoteCodes } from "@/lib/reviewedCodes/reviewedManifestAdapter";
+import { getQuoteCodes, getNonQuoteCodes } from "@/lib/reviewedCodes/reviewedManifestAdapter";
+import {
+  loadAStockData,
+  type AStockDataEnvelope,
+} from "@/lib/reviewedCodes/aStockDataService";
 import { REVIEWED_SEGMENT_CODES } from "@/lib/reviewedCodes/reviewedSegmentCodes";
 
 // ---------------------------------------------------------------------------
@@ -163,12 +167,30 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
     segment.key,
   );
 
+  const nonQuoteCodes = getNonQuoteCodes(
+    REVIEWED_SEGMENT_CODES,
+    "aiComputing",
+    segment.key,
+  );
+
+  // -- A-stock data panel state ------------------------------------------------
+  const [dataEnv, setDataEnv] = useState<AStockDataEnvelope | null>(null);
+  const [dataLoading, setDataLoading] = useState(false);
+
   const handleLoadQuote = async () => {
     if (reviewedQuoteCodes.length === 0) return;
     setQuoteLoading(true);
     const env = await loadStockQuote(reviewedQuoteCodes[0], { mode: "real" });
     setQuoteEnv(env);
     setQuoteLoading(false);
+  };
+
+  const handleLoadData = async () => {
+    if (nonQuoteCodes.length === 0) return;
+    setDataLoading(true);
+    const env = await loadAStockData(nonQuoteCodes[0], { mode: "real" });
+    setDataEnv(env);
+    setDataLoading(false);
   };
 
   return (
@@ -240,6 +262,116 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">{quoteEnv.error ?? "Failed to load"}</p>
+            )}
+          </section>
+        )}
+
+        {/* Reviewed A-share data panel — non-quote families */}
+        {nonQuoteCodes.length > 0 && (
+          <section className="rounded-lg border bg-card p-5">
+            <h3 className="text-sm font-semibold mb-3">
+              {t("aiComputing.template.reviewedDataLabel")}
+            </h3>
+
+            {!dataEnv || dataLoading ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  {nonQuoteCodes[0]}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleLoadData}
+                  disabled={dataLoading}
+                  className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted/50 disabled:opacity-50"
+                >
+                  {dataLoading ? "..." : t("aiComputing.template.reviewedDataLoad")}
+                </button>
+              </div>
+            ) : dataEnv.ok ? (
+              <div className="space-y-3">
+                {/* News */}
+                <div className="text-xs">
+                  <span className="font-medium">{t("aiComputing.template.reviewedDataNews")}: </span>
+                  {dataEnv.data.news?.ok ? (
+                    <span className="text-muted-foreground">
+                      {Array.isArray(dataEnv.data.news.data) ? dataEnv.data.news.data.length : 0} items
+                      {dataEnv.data.news.source ? ` (${dataEnv.data.news.source})` : ""}
+                    </span>
+                  ) : (
+                    <span className="text-amber-600">
+                      {dataEnv.data.news?.error_code === "code_not_reviewed"
+                        ? t("aiComputing.template.reviewedDataPending")
+                        : dataEnv.data.news?.error || "—"}
+                    </span>
+                  )}
+                </div>
+                {/* Reports */}
+                <div className="text-xs">
+                  <span className="font-medium">{t("aiComputing.template.reviewedDataReports")}: </span>
+                  {dataEnv.data.reports?.ok ? (
+                    <span className="text-muted-foreground">
+                      {dataEnv.data.reports.source || "—"}
+                    </span>
+                  ) : (
+                    <span className="text-amber-600">
+                      {dataEnv.data.reports?.error_code === "code_not_reviewed"
+                        ? t("aiComputing.template.reviewedDataPending")
+                        : dataEnv.data.reports?.error || "—"}
+                    </span>
+                  )}
+                </div>
+                {/* Fundamentals */}
+                <div className="text-xs">
+                  <span className="font-medium">{t("aiComputing.template.reviewedDataFundamentals")}: </span>
+                  {dataEnv.data.fundamentals?.ok ? (
+                    <span className="text-muted-foreground">
+                      {(() => {
+                        const d = dataEnv.data.fundamentals.data as Record<string, unknown> | undefined;
+                        if (!d) return "—";
+                        const si = d.stock_info;
+                        const fr = d.financial_reports as Record<string, unknown[]> | undefined;
+                        const parts: string[] = [];
+                        if (si) parts.push("info ✓");
+                        if (fr) {
+                          const lrb = (fr.income_statement || []).length;
+                          const fzb = (fr.balance_sheet || []).length;
+                          const llb = (fr.cash_flow || []).length;
+                          parts.push(`lrb=${lrb} fzb=${fzb} llb=${llb}`);
+                        }
+                        return parts.join(", ") || "—";
+                      })()}
+                      {dataEnv.data.fundamentals.source ? ` (${dataEnv.data.fundamentals.source})` : ""}
+                    </span>
+                  ) : (
+                    <span className="text-amber-600">
+                      {dataEnv.data.fundamentals?.error_code === "code_not_reviewed"
+                        ? t("aiComputing.template.reviewedDataPending")
+                        : dataEnv.data.fundamentals?.error || "—"}
+                    </span>
+                  )}
+                </div>
+                {/* Announcements */}
+                <div className="text-xs">
+                  <span className="font-medium">{t("aiComputing.template.reviewedDataAnnouncements")}: </span>
+                  {dataEnv.data.announcements?.ok ? (
+                    <span className="text-muted-foreground">
+                      {Array.isArray(dataEnv.data.announcements.data) ? dataEnv.data.announcements.data.length : 0} items
+                      {dataEnv.data.announcements.source ? ` (${dataEnv.data.announcements.source})` : ""}
+                    </span>
+                  ) : (
+                    <span className="text-amber-600">
+                      {dataEnv.data.announcements?.error_code === "code_not_reviewed"
+                        ? t("aiComputing.template.reviewedDataPending")
+                        : dataEnv.data.announcements?.error || "—"}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("aiComputing.template.reviewedDataDisclaimer")}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">{dataEnv.error || "Failed to load"}</p>
             )}
           </section>
         )}

@@ -454,6 +454,8 @@ def build_stock_report_params(
         "pageSize": str(page_size),
         "pageNo": str(page_no),
         "fields": "all",
+        "beginTime": "2024-01-01",
+        "endTime": "2026-12-31",
     }
 
 

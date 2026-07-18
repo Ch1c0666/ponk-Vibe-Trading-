@@ -303,3 +303,74 @@ def test_news_provider_exception_is_enveloped():
     assert payload["partial"] is True
     assert payload["data"]["news"]["ok"] is False
     assert payload["data"]["news"]["error_code"] == "provider_request_failed"
+
+
+def test_fundamentals_unreviewed_datause_does_not_call_provider():
+    """Without dataUse 'fundamental', the fundamentals family must return
+    code_not_reviewed and never call either provider."""
+    fetch_info = Mock(return_value={"code": "000000", "name": "X"})
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["quote"]),
+    ), patch(
+        "src.api.astockdata_routes._FETCHERS",
+        {"fundamentals": fetch_info},
+    ):
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}&include=fundamentals"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["fundamentals"]["error_code"] == "code_not_reviewed"
+    fetch_info.assert_not_called()
+
+
+def test_fundamentals_ok_with_valid_data():
+    """With dataUse 'fundamental', both stock info and financial reports
+    must be included in the response."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["fundamental"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.eastmoney_stock_info",
+        return_value={"code": "000000", "name": "Mock Corp", "mcap": 50000},
+    ), patch(
+        "backtest.loaders.astockdata_loader.sina_financial_report",
+        return_value=[{"report_period": "2026-03-31", "净利润": "100"}],
+    ):
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}&include=fundamentals&limit=5"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is False
+    fund = payload["data"]["fundamentals"]
+    assert fund["ok"] is True
+    assert fund["source"] == "eastmoney+sina"
+    assert fund["data"]["stock_info"]["name"] == "Mock Corp"
+    reports = fund["data"]["financial_reports"]
+    assert reports["income_statement"][0]["净利润"] == "100"
+
+
+def test_fundamentals_provider_exception_is_enveloped():
+    """When eastmoney_stock_info throws, the fundamentals family must
+    return provider_request_failed."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["fundamental"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.eastmoney_stock_info",
+        side_effect=RuntimeError("provider down"),
+    ):
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}&include=fundamentals"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["fundamentals"]["ok"] is False
+    assert payload["data"]["fundamentals"]["error_code"] == "provider_request_failed"

@@ -742,6 +742,69 @@ class AstockdataOfflineContractTests(unittest.TestCase):
             rows = astockdata_loader.eastmoney_stock_news("000000.SH")
         self.assertEqual(rows, [])
 
+    # -- fundamentals contract ------------------------------------------------
+
+    def test_eastmoney_stock_info_parses_all_fields(self) -> None:
+        """Valid response must parse code, name, industry, shares, mcap, list_date."""
+        response = SimpleNamespace(
+            json=lambda: {
+                "data": {
+                    "f57": "000000", "f58": "Mock Corp", "f100": "Technology",
+                    "f73": 1000, "f74": 500, "f116": 50000,
+                    "f117": 25000, "f300": "20200101", "f170": 10.5,
+                },
+            },
+        )
+        with patch.object(
+            astockdata_loader, "em_get", return_value=response,
+        ):
+            info = astockdata_loader.eastmoney_stock_info("000000.SH")
+
+        self.assertIsNotNone(info)
+        self.assertEqual(info["code"], "000000")
+        self.assertEqual(info["name"], "Mock Corp")
+        self.assertEqual(info["industry"], "Technology")
+        self.assertEqual(info["total_shares"], 1000)
+        self.assertEqual(info["mcap"], 50000)
+        self.assertEqual(info["price"], 10.5)
+
+    def test_eastmoney_stock_info_http_error_returns_none(self) -> None:
+        """HTTP error from em_get must return None without exception."""
+        with patch.object(
+            astockdata_loader, "em_get",
+            side_effect=requests.exceptions.Timeout("timeout"),
+        ):
+            info = astockdata_loader.eastmoney_stock_info("000000.SH")
+        self.assertIsNone(info)
+
+    def test_sina_financial_report_invalid_type_returns_empty(self) -> None:
+        """An unsupported report_type must return [] without calling the network."""
+        with patch.object(
+            astockdata_loader.requests, "get",
+        ) as get:
+            rows = astockdata_loader.sina_financial_report(
+                "000000.SH", "invalid", num=4,
+            )
+        self.assertEqual(rows, [])
+        get.assert_not_called()
+
+    def test_sina_financial_report_num_is_bounded(self) -> None:
+        """num is clamped to [1, 20]; out-of-range values must be safe."""
+        response = SimpleNamespace(
+            json=lambda: {
+                "result": {"data": {"report_list": {}}},
+            },
+        )
+        with patch.object(
+            astockdata_loader.requests, "get", return_value=response,
+        ) as get:
+            # num=0 → clamped to 1
+            astockdata_loader.sina_financial_report("000000.SH", "lrb", num=0)
+            self.assertEqual(get.call_args.kwargs["params"]["num"], "1")
+            # num=100 → clamped to 20
+            astockdata_loader.sina_financial_report("000000.SH", "fzb", num=100)
+            self.assertEqual(get.call_args.kwargs["params"]["num"], "20")
+
     # -- registry -------------------------------------------------------------
 
     def test_registry_contains_astockdata_in_reviewed_order(self) -> None:

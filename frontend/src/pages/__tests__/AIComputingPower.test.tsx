@@ -303,4 +303,56 @@ describe("AIComputingPower page", () => {
     expect(url).not.toContain("/mcp");
     fetchSpy.mockRestore();
   });
+
+  it("data panel renders report titles and announcement titles after load", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true, source: "a-stock-data", code: "000000.SH", partial: false,
+        data: {
+          news: { ok: true, source: "eastmoney", data: [
+            { title: "Mock News Title", time: "2026-07-18", source: "Mock Source" },
+          ]},
+          fundamentals: { ok: true, source: "eastmoney+sina", data: { stock_info: null, financial_reports: { income_statement: [{ report_period: "2026-03-31" }], balance_sheet: [], cash_flow: [] } } },
+          reports: { ok: true, source: "eastmoney+ths", data: { reports: [
+            { title: "Mock Report", orgSName: "Mock Broker", researcher: "Analyst A", publishDate: "2026-07-18", emRatingName: "Buy" },
+          ]}},
+          announcements: { ok: true, source: "cninfo", data: [
+            { title: "Mock Announcement", date: "2026-07-18", type: "临时公告" },
+          ]},
+        },
+      }),
+    });
+
+    renderAt("/ai-computing/computeChip");
+    await act(() => screen.getByRole("button", { name: "Load Data" }).click());
+
+    expect(screen.getByText("Mock Report")).toBeInTheDocument();
+    expect(screen.getByText("Mock Announcement")).toBeInTheDocument();
+    expect(screen.getByText("Mock News Title")).toBeInTheDocument();
+    expect(screen.getByText("Mock Broker · Analyst A · 2026-07-18 · Buy")).toBeInTheDocument();
+    // financial reports: shows period info
+    expect(screen.getByText(/Income/)).toBeInTheDocument();
+    // stock_info unavailable
+    expect(screen.getByText("stock info unavailable")).toBeInTheDocument();
+    // news disclaimer
+    expect(screen.getByText("Keyword-matched news, may not be company-specific.")).toBeInTheDocument();
+    fetchSpy.mockRestore();
+  });
+
+  it("data panel URL does NOT include /api/stocks/quote for non-quote code", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, data: {} }),
+    });
+
+    renderAt("/ai-computing/computeChip");
+    await act(() => screen.getByRole("button", { name: "Load Data" }).click());
+
+    const url = fetchSpy.mock.calls[0][0] as string;
+    expect(url).not.toContain("/api/stocks/quote");
+    fetchSpy.mockRestore();
+  });
 });

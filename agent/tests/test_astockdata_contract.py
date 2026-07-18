@@ -702,6 +702,59 @@ class AstockdataOfflineContractTests(unittest.TestCase):
         )
         self.assertEqual(post.call_args.kwargs["data"]["pageSize"], "3")
 
+    def test_cninfo_orgid_fallback_used_when_not_in_mapping(self) -> None:
+        """When stock code is not in the orgId mapping, the deterministic
+        fallback must be used."""
+        with patch.object(astockdata_loader, "_CNINFO_ORGID_MAP", {}), patch.object(
+            astockdata_loader.requests, "post",
+            return_value=SimpleNamespace(
+                json=lambda: {"announcements": []},
+            ),
+        ) as post:
+            # 600xxx → sh prefix
+            astockdata_loader.cninfo_announcements("600000.SH", page_size=3)
+
+        self.assertIn("gssh0600000", post.call_args.kwargs["data"]["stock"])
+
+    def test_cninfo_orgid_fallback_works_after_mapping_load_failure(self) -> None:
+        """When the orgId mapping HTTP request fails, the fallback must
+        still produce a valid orgId without crashing."""
+        with patch.object(astockdata_loader, "_CNINFO_ORGID_MAP", None), patch.object(
+            astockdata_loader.requests, "get",
+            side_effect=requests.exceptions.ConnectionError("down"),
+        ), patch.object(
+            astockdata_loader.requests, "post",
+            return_value=SimpleNamespace(
+                json=lambda: {"announcements": []},
+            ),
+        ) as post:
+            rows = astockdata_loader.cninfo_announcements("000000.SZ", page_size=3)
+
+        self.assertEqual(rows, [])
+        self.assertIn("gssz000000", post.call_args.kwargs["data"]["stock"])
+
+    def test_cninfo_announcements_empty_result_returns_empty_list(self) -> None:
+        """Empty announcements array must return []."""
+        with patch.object(astockdata_loader, "_CNINFO_ORGID_MAP", {}), patch.object(
+            astockdata_loader.requests, "post",
+            return_value=SimpleNamespace(
+                json=lambda: {"announcements": []},
+            ),
+        ):
+            rows = astockdata_loader.cninfo_announcements("000000.SH", page_size=5)
+
+        self.assertEqual(rows, [])
+
+    def test_cninfo_announcements_http_error_returns_empty_list(self) -> None:
+        """HTTP error from POST must return [] without exception."""
+        with patch.object(astockdata_loader, "_CNINFO_ORGID_MAP", {}), patch.object(
+            astockdata_loader.requests, "post",
+            side_effect=requests.exceptions.ConnectionError("down"),
+        ):
+            rows = astockdata_loader.cninfo_announcements("000000.SH")
+
+        self.assertEqual(rows, [])
+
     # -- news contract --------------------------------------------------------
 
     def test_eastmoney_stock_news_parses_valid_jsonp(self) -> None:

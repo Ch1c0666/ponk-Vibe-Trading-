@@ -437,3 +437,90 @@ def test_fundamentals_stock_info_none_is_ok():
     assert fr["income_statement"] == []
     assert fr["balance_sheet"] == []
     assert fr["cash_flow"] == []
+
+
+# -- announcements ---------------------------------------------------------
+
+
+def test_announcements_unreviewed_datause_does_not_call_provider():
+    """Without dataUse 'announcement', the announcement family must return
+    code_not_reviewed and never call the provider."""
+    fetch_ann = Mock(return_value=[{"title": "Mock"}])
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["quote"]),
+    ), patch(
+        "src.api.astockdata_routes._FETCHERS",
+        {"announcements": fetch_ann},
+    ):
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}&include=announcements"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["announcements"]["error_code"] == "code_not_reviewed"
+    fetch_ann.assert_not_called()
+
+
+def test_announcements_ok_with_valid_data():
+    """With dataUse 'announcement', valid provider data must be returned."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["announcement"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.cninfo_announcements",
+        return_value=[{"title": "Mock announcement", "date": "2026-07-18"}],
+    ):
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}&include=announcements&limit=5"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is False
+    ann = payload["data"]["announcements"]
+    assert ann["ok"] is True
+    assert ann["source"] == "cninfo"
+    assert ann["data"][0]["title"] == "Mock announcement"
+
+
+def test_announcements_empty_result_is_ok():
+    """Empty provider result must return ok: true with []."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["announcement"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.cninfo_announcements",
+        return_value=[],
+    ):
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}&include=announcements"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is False
+    assert payload["data"]["announcements"]["ok"] is True
+    assert payload["data"]["announcements"]["data"] == []
+
+
+def test_announcements_provider_exception_is_enveloped():
+    """Provider exception must return provider_request_failed."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["announcement"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.cninfo_announcements",
+        side_effect=RuntimeError("cninfo down"),
+    ):
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}&include=announcements"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["announcements"]["ok"] is False
+    assert payload["data"]["announcements"]["error_code"] == "provider_request_failed"

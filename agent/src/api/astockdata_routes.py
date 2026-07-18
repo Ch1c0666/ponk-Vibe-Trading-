@@ -108,12 +108,10 @@ def _fetch_fundamentals(code: str, limit: int) -> dict[str, Any]:
     )
 
     info = eastmoney_stock_info(code)
-    if not isinstance(info, dict):
-        raise ValueError(f"no fundamentals returned for {code}")
     return _ok(
         "eastmoney+sina",
         {
-            "stock_info": info,
+            "stock_info": info if isinstance(info, dict) else None,
             "financial_reports": {
                 "income_statement": sina_financial_report(code, "lrb", num=limit),
                 "balance_sheet": sina_financial_report(code, "fzb", num=limit),

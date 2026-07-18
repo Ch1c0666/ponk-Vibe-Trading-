@@ -945,6 +945,17 @@
     "tableName": "이름",
     "tablePrice": "가격",
     "tableChange": "변동률",
-    "tableActions": "작업"
+    "tableActions": "작업",
+    "watchlistAddCodeTitle": "관심 종목 추가",
+    "watchlistAddConfirm": "추가",
+    "watchlistCancel": "취소",
+    "watchlistCodeLabel": "코드",
+    "watchlistCodeRequired": "코드를 입력하세요",
+    "watchlistInvalidCode": "잘못된 코드 형식",
+    "watchlistNotesLabel": "메모 (선택)",
+    "watchlistNotesPlaceholder": "선택적 메모",
+    "watchlistQuoteIdle": "로드되지 않음",
+    "watchlistRemove": "삭제",
+    "watchlistUSNotSupported": "미국 주식 시세는 아직 사용할 수 없습니다"
   }
 }

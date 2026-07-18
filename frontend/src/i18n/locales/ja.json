@@ -945,6 +945,17 @@
     "tableName": "名称",
     "tablePrice": "価格",
     "tableChange": "変動",
-    "tableActions": "操作"
+    "tableActions": "操作",
+    "watchlistAddCodeTitle": "銘柄を追加",
+    "watchlistAddConfirm": "追加",
+    "watchlistCancel": "キャンセル",
+    "watchlistCodeLabel": "コード",
+    "watchlistCodeRequired": "コードを入力してください",
+    "watchlistInvalidCode": "無効なコード形式",
+    "watchlistNotesLabel": "メモ（任意）",
+    "watchlistNotesPlaceholder": "任意のメモ",
+    "watchlistQuoteIdle": "未読込",
+    "watchlistRemove": "削除",
+    "watchlistUSNotSupported": "米国株の株価はまだ利用できません"
   }
 }

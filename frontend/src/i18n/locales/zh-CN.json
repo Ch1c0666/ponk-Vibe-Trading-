@@ -945,6 +945,17 @@
     "tableName": "名称",
     "tablePrice": "最新价",
     "tableChange": "涨跌幅",
-    "tableActions": "操作"
+    "tableActions": "操作",
+    "watchlistAddCodeTitle": "添加到自选",
+    "watchlistAddConfirm": "添加",
+    "watchlistCancel": "取消",
+    "watchlistCodeLabel": "代码",
+    "watchlistCodeRequired": "请输入代码",
+    "watchlistInvalidCode": "代码格式无效",
+    "watchlistNotesLabel": "备注（可选）",
+    "watchlistNotesPlaceholder": "可选备注",
+    "watchlistQuoteIdle": "未加载",
+    "watchlistRemove": "删除",
+    "watchlistUSNotSupported": "美股行情暂不支持"
   }
 }

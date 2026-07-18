@@ -39,11 +39,11 @@ describe("Overview page", () => {
     expect(dashes.length).toBeGreaterThanOrEqual(4); // one per card
   });
 
-  it("renders watchlist sections with disabled add buttons", () => {
+  it("renders watchlist sections with enabled add buttons", () => {
     renderOverview();
     const addButtons = screen.getAllByRole("button", { name: "Add" });
     expect(addButtons).toHaveLength(2);
-    for (const btn of addButtons) expect(btn).toBeDisabled();
+    for (const btn of addButtons) expect(btn).not.toBeDisabled();
   });
 
   // -- Load button --------------------------------------------------------
@@ -172,7 +172,7 @@ describe("Overview page", () => {
 
   // -- Watchlists unchanged -----------------------------------------------
 
-  it("watchlist tables remain empty and disabled", () => {
+  it("watchlist tables remain empty", () => {
     renderOverview();
     expect(screen.getAllByText("No watchlist entries")).toHaveLength(2);
   });

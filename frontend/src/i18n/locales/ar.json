@@ -945,6 +945,17 @@
     "tableName": "الاسم",
     "tablePrice": "السعر",
     "tableChange": "التغير",
-    "tableActions": "الإجراءات"
+    "tableActions": "الإجراءات",
+    "watchlistAddCodeTitle": "إضافة إلى قائمة المراقبة",
+    "watchlistAddConfirm": "إضافة",
+    "watchlistCancel": "إلغاء",
+    "watchlistCodeLabel": "الرمز",
+    "watchlistCodeRequired": "الرمز مطلوب",
+    "watchlistInvalidCode": "تنسيق الرمز غير صالح",
+    "watchlistNotesLabel": "ملاحظات (اختياري)",
+    "watchlistNotesPlaceholder": "ملاحظة اختيارية",
+    "watchlistQuoteIdle": "لم يتم التحميل",
+    "watchlistRemove": "إزالة",
+    "watchlistUSNotSupported": "أسعار الأسهم الأمريكية غير متاحة بعد"
   }
 }

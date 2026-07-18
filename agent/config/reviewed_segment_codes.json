@@ -15,6 +15,17 @@
             "dataUse": ["quote"],
             "displayName": "",
             "riskNotes": "仅用于产业链研究与接口验证，不构成投资建议。"
+          },
+          {
+            "code": "688981.SH",
+            "status": "approved",
+            "reason": "用户手动审核并明确授权，将 688981.SH 作为 AI 算力 computeChip 方向的首个 news-only reviewed code，用于验证 news dataUse 门禁与 API-only smoke；不用于 quote/report/fundamental/announcement 扩展。",
+            "source": "user manual review",
+            "reviewer": "Chico Zhu",
+            "reviewedAt": "2026-07-18",
+            "dataUse": ["news"],
+            "displayName": "",
+            "riskNotes": "news-only；不得加入 segmentCodeMap、页面、watchlist、测试 fixture；不得扩展到 quote/report/fundamental/announcement；688041.SH 继续 quote-only。"
           }
         ]
       },

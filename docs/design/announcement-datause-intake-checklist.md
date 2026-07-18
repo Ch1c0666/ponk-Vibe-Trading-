@@ -50,6 +50,8 @@ After manifest update and 8899 restart (requires explicit authorization):
 - `GET /api/a-stocks/data?code=<CODE>&include=announcements`
   - Report: ok, source, count — do NOT print announcement titles or content
 - `GET /api/a-stocks/data?code=000000.SH&include=announcements` → code_not_reviewed
+- `GET /api/a-stocks/data?code=<CODE>&include=announcements&q_type=1` → 400 invalid_argument
+- q_type=1 must remain fail-closed everywhere
 - Non-announcement families → all code_not_reviewed
 
 ## 6. Rollback

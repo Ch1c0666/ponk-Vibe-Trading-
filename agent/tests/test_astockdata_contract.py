@@ -711,10 +711,10 @@ class AstockdataOfflineContractTests(unittest.TestCase):
                 json=lambda: {"announcements": []},
             ),
         ) as post:
-            # 600xxx → sh prefix
-            astockdata_loader.cninfo_announcements("600000.SH", page_size=3)
+            # 000000.SZ → sz fallback (does not start with 6/8/4)
+            astockdata_loader.cninfo_announcements("000000.SZ", page_size=3)
 
-        self.assertIn("gssh0600000", post.call_args.kwargs["data"]["stock"])
+        self.assertIn("gssz000000", post.call_args.kwargs["data"]["stock"])
 
     def test_cninfo_orgid_fallback_works_after_mapping_load_failure(self) -> None:
         """When the orgId mapping HTTP request fails, the fallback must

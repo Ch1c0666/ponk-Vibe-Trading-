@@ -7,6 +7,7 @@ All provider calls are mocked.  No .env reads.  No network.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -333,9 +334,8 @@ def test_no_real_stock_codes_in_source():
     assert source_path is not None
     with open(source_path) as f:
         body = f.read()
-    assert "600519" not in body
-    assert "000001" not in body
-    assert "688981" not in body
+    # No real A-share codes hardcoded in source — only placeholder 000000.SH
+    assert not re.search(r"[1-9]\d{5}\.(SH|SZ|BJ)", body), "real stock code found in source"
 
 
 def test_manifest_compute_chip_has_approved_codes():

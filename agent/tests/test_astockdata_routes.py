@@ -374,3 +374,35 @@ def test_fundamentals_provider_exception_is_enveloped():
     assert payload["partial"] is True
     assert payload["data"]["fundamentals"]["ok"] is False
     assert payload["data"]["fundamentals"]["error_code"] == "provider_request_failed"
+
+
+def test_fundamentals_sina_empty_is_ok():
+    """When eastmoney_stock_info succeeds but sina_financial_report returns []
+    for all three report types, the route must still return ok: true with
+    safe empty financial_report arrays (not an error)."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["fundamental"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.eastmoney_stock_info",
+        return_value={"code": "000000", "name": "Mock Corp"},
+    ), patch(
+        "backtest.loaders.astockdata_loader.sina_financial_report",
+        return_value=[],
+    ):
+        resp = client.get(
+            f"/api/a-stocks/data?code={_PLACEHOLDER}&include=fundamentals"
+        )
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is False
+    fund = payload["data"]["fundamentals"]
+    assert fund["ok"] is True
+    assert fund["source"] == "eastmoney+sina"
+    assert fund["data"]["stock_info"]["name"] == "Mock Corp"
+    # sina returned [] for all three report types → all empty arrays
+    fr = fund["data"]["financial_reports"]
+    assert fr["income_statement"] == []
+    assert fr["balance_sheet"] == []
+    assert fr["cash_flow"] == []

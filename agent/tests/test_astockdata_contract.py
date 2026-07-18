@@ -805,6 +805,64 @@ class AstockdataOfflineContractTests(unittest.TestCase):
             astockdata_loader.sina_financial_report("000000.SH", "fzb", num=100)
             self.assertEqual(get.call_args.kwargs["params"]["num"], "20")
 
+    def test_sina_financial_report_fzb_shape(self) -> None:
+        """sina_financial_report with report_type='fzb' must parse balance
+        sheet report_list and return the correct source param."""
+        response = SimpleNamespace(
+            json=lambda: {
+                "result": {
+                    "data": {
+                        "report_list": {
+                            "20251231": {
+                                "data": [
+                                    {"item_title": "总资产", "item_value": "1000"},
+                                    {"item_title": "总负债", "item_value": "400"},
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        )
+        with patch.object(
+            astockdata_loader.requests, "get", return_value=response,
+        ) as get:
+            rows = astockdata_loader.sina_financial_report("000000.SZ", "fzb", num=2)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["report_period"], "2025-12-31")
+        self.assertEqual(rows[0]["总资产"], "1000")
+        self.assertEqual(rows[0]["总负债"], "400")
+        self.assertEqual(get.call_args.kwargs["params"]["source"], "fzb")
+
+    def test_sina_financial_report_llb_shape(self) -> None:
+        """sina_financial_report with report_type='llb' must parse cash-flow
+        statement report_list and return the correct source param."""
+        response = SimpleNamespace(
+            json=lambda: {
+                "result": {
+                    "data": {
+                        "report_list": {
+                            "20251231": {
+                                "data": [
+                                    {"item_title": "经营活动现金流", "item_value": "500"},
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        )
+        with patch.object(
+            astockdata_loader.requests, "get", return_value=response,
+        ) as get:
+            rows = astockdata_loader.sina_financial_report("000000.SZ", "llb", num=2)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["report_period"], "2025-12-31")
+        self.assertEqual(rows[0]["经营活动现金流"], "500")
+        self.assertEqual(get.call_args.kwargs["params"]["source"], "llb")
+
     # -- registry -------------------------------------------------------------
 
     def test_registry_contains_astockdata_in_reviewed_order(self) -> None:

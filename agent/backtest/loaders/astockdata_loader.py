@@ -603,23 +603,58 @@ def eastmoney_stock_info(code: str) -> Optional[Dict[str, Any]]:
         "secid": secid,
         "fields": "f57,f58,f73,f74,f75,f100,f116,f117,f162,f167,f170,f300",
     }
+    # Fields: code, name, industry, mcap, float_mcap, price (display only)
+    fields = "f57,f58,f100,f116,f117,f170"
+    slim_params = {"secid": secid, "fields": fields}
+
+    # Try em_get first (throttled session).
     try:
-        r = em_get(url, params=params, timeout=10)
+        r = em_get(url, params=slim_params, timeout=10)
         data = r.json().get("data") or {}
-        return {
-            "code": data.get("f57", code),
-            "name": data.get("f58", ""),
-            "industry": data.get("f100", ""),
-            "total_shares": data.get("f73"),
-            "float_shares": data.get("f74"),
-            "mcap": data.get("f116"),
-            "float_mcap": data.get("f117"),
-            "list_date": data.get("f300"),
-            "price": data.get("f170"),
-        }
+        if data.get("f58"):
+            return {
+                "code": data.get("f57", code),
+                "name": data.get("f58", ""),
+                "industry": data.get("f100", ""),
+                "total_shares": None,
+                "float_shares": None,
+                "mcap": data.get("f116"),
+                "float_mcap": data.get("f117"),
+                "list_date": None,
+                "price": data.get("f170"),
+            }
+    except Exception:
+        pass  # fall through to proxy-bypass
+
+    # Fallback: urllib with explicit no-proxy opener.
+    try:
+        import urllib.request
+        from urllib.error import URLError
+
+        qs = "&".join(f"{k}={v}" for k, v in slim_params.items())
+        full_url = f"{url}?{qs}"
+        req = urllib.request.Request(full_url, headers={"User-Agent": UA})
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(req, timeout=10) as resp:
+            import json as _json
+            body = _json.loads(resp.read().decode("utf-8"))
+        data = body.get("data") or {}
+        if data.get("f58"):
+            return {
+                "code": data.get("f57", code),
+                "name": data.get("f58", ""),
+                "industry": data.get("f100", ""),
+                "total_shares": None,
+                "float_shares": None,
+                "mcap": data.get("f116"),
+                "float_mcap": data.get("f117"),
+                "list_date": None,
+                "price": data.get("f170"),
+            }
     except Exception as exc:
-        logger.warning("eastmoney_stock_info for %s: %s", code, exc)
-        return None
+        logger.warning("eastmoney_stock_info fallback for %s: %s", code, exc)
+
+    return None
 
 
 def sina_financial_report(

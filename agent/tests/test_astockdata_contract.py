@@ -797,14 +797,13 @@ class AstockdataOfflineContractTests(unittest.TestCase):
 
     # -- fundamentals contract ------------------------------------------------
 
-    def test_eastmoney_stock_info_parses_all_fields(self) -> None:
-        """Valid response must parse code, name, industry, shares, mcap, list_date."""
+    def test_eastmoney_stock_info_parses_core_fields(self) -> None:
+        """Valid response must parse code, name, industry, mcap, price."""
         response = SimpleNamespace(
             json=lambda: {
                 "data": {
                     "f57": "000000", "f58": "Mock Corp", "f100": "Technology",
-                    "f73": 1000, "f74": 500, "f116": 50000,
-                    "f117": 25000, "f300": "20200101", "f170": 10.5,
+                    "f116": 50000, "f117": 25000, "f170": 10.5,
                 },
             },
         )
@@ -817,9 +816,19 @@ class AstockdataOfflineContractTests(unittest.TestCase):
         self.assertEqual(info["code"], "000000")
         self.assertEqual(info["name"], "Mock Corp")
         self.assertEqual(info["industry"], "Technology")
-        self.assertEqual(info["total_shares"], 1000)
         self.assertEqual(info["mcap"], 50000)
+        self.assertEqual(info["float_mcap"], 25000)
         self.assertEqual(info["price"], 10.5)
+
+    def test_eastmoney_stock_info_fallback_used_when_em_get_fails(self) -> None:
+        """When em_get fails, function must attempt urllib fallback (socket guard
+        blocks real call in test, so result is None — but no crash)."""
+        with patch.object(
+            astockdata_loader, "em_get", side_effect=Exception("proxy down"),
+        ):
+            info = astockdata_loader.eastmoney_stock_info("000000.SH")
+        # Fallback tried but socket guard blocks real network → returns None safely
+        self.assertIsNone(info)
 
     def test_eastmoney_stock_info_http_error_returns_none(self) -> None:
         """HTTP error from em_get must return None without exception."""

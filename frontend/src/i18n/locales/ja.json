@@ -827,6 +827,7 @@
       "reviewedDataReports": "レポート",
       "reviewedDataAnnouncements": "公告",
       "reviewedDataPending": "未審査",
+      "reviewedDataStockInfoUnavailable": "基本情報は利用不可",
       "reviewedDataDisclaimer": "読み取り専用の研究データ。投資助言ではありません。"
     },
     "structureDesc": "AIコンピューティングサプライチェーンの静的構造図。上流の材料/チップ、中流のモジュール/冷却、下流のサーバー/クラウドベンダーの階層関係を示します。",

@@ -827,6 +827,7 @@
       "reviewedDataReports": "تقارير",
       "reviewedDataAnnouncements": "إعلانات",
       "reviewedDataPending": "قيد المراجعة",
+      "reviewedDataStockInfoUnavailable": "معلومات أساسية غير متاحة",
       "reviewedDataDisclaimer": "بيانات بحثية للقراءة فقط. ليست نصيحة استثمارية."
     },
     "structureDesc": "مخطط هيكلي ثابت لسلسلة توريد حوسبة الذكاء الاصطناعي. يوضح الطبقات: المواد/الرقاقات الأولية، والوحدات/التبريد الوسيطة، والخوادم/مزودي السحابة النهائية.",

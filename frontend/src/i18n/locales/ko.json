@@ -827,6 +827,7 @@
       "reviewedDataReports": "리포트",
       "reviewedDataAnnouncements": "공시",
       "reviewedDataPending": "검토 대기",
+      "reviewedDataStockInfoUnavailable": "기본 정보 사용 불가",
       "reviewedDataDisclaimer": "읽기 전용 연구 데이터. 투자 조언이 아닙니다."
     },
     "structureDesc": "AI 컴퓨팅 공급망 정적 구조도. 상류 소재/칩, 중류 모듈/냉각, 하류 서버/클라우드 벤더의 계층 관계를 보여줍니다.",

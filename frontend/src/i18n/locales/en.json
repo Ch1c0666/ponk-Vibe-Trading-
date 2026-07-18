@@ -827,6 +827,7 @@
       "reviewedDataReports": "Reports",
       "reviewedDataAnnouncements": "Announcements",
       "reviewedDataPending": "Not reviewed",
+      "reviewedDataStockInfoUnavailable": "stock info unavailable",
       "reviewedDataDisclaimer": "Read-only research data. Not investment advice."
     },
     "structureDesc": "Static AI computing supply chain structure. Tiers show upstream materials/chips, midstream modules/cooling, and downstream servers/cloud vendors. All nodes are placeholder frames; company names and data will be added in future releases.",

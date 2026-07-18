@@ -331,7 +331,11 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
                         const si = d.stock_info;
                         const fr = d.financial_reports as Record<string, unknown[]> | undefined;
                         const parts: string[] = [];
-                        if (si) parts.push("info ✓");
+                        if (si) {
+                          parts.push("info ✓");
+                        } else {
+                          parts.push(t("aiComputing.template.reviewedDataStockInfoUnavailable"));
+                        }
                         if (fr) {
                           const lrb = (fr.income_statement || []).length;
                           const fzb = (fr.balance_sheet || []).length;

@@ -520,3 +520,367 @@ describe("WatchlistSection quote safety", () => {
     expect(mockLoadWatchlistQuotes).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Notes editing
+// ---------------------------------------------------------------------------
+
+describe("WatchlistSection notes editing", () => {
+  it("shows '—' when entry has no notes", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    const editBtn = screen.getByRole("button", { name: "Edit notes" });
+    expect(editBtn.textContent).toBe("—");
+  });
+
+  it("clicking notes cell opens inline input", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Edit notes" }));
+
+    expect(screen.getByRole("textbox", { name: "Notes (optional)" })).toBeInTheDocument();
+  });
+
+  it("saves notes on Enter and displays saved text", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Edit notes" }));
+    const input = screen.getByRole("textbox", { name: "Notes (optional)" });
+    await h.user.clear(input);
+    await h.user.type(input, "My note");
+    await h.user.keyboard("{Enter}");
+
+    expect(screen.getByText("My note")).toBeInTheDocument();
+  });
+
+  it("saves notes on blur", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Edit notes" }));
+    const input = screen.getByRole("textbox", { name: "Notes (optional)" });
+    await h.user.clear(input);
+    await h.user.type(input, "Blur save");
+    await h.user.tab();
+
+    expect(screen.getByText("Blur save")).toBeInTheDocument();
+  });
+
+  it("cancels notes edit on Escape", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Edit notes" }));
+    const input = screen.getByRole("textbox", { name: "Notes (optional)" });
+    await h.user.clear(input);
+    await h.user.type(input, "Discard");
+    await h.user.keyboard("{Escape}");
+
+    // Input should be gone, original "—" restored in the Edit notes button
+    expect(screen.queryByRole("textbox", { name: "Notes (optional)" })).not.toBeInTheDocument();
+    const editBtn = screen.getByRole("button", { name: "Edit notes" });
+    expect(editBtn.textContent).toBe("—");
+  });
+
+  it("persists notes to localStorage after edit", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+
+    await h.user.click(screen.getByRole("button", { name: "Edit notes" }));
+    const input = screen.getByRole("textbox", { name: "Notes (optional)" });
+    await h.user.clear(input);
+    await h.user.type(input, "Persisted");
+    await h.user.keyboard("{Enter}");
+
+    const saved = loadWatchlistData();
+    const entry = saved.items.find((e) => e.code === "000000.SH");
+    expect(entry?.notes).toBe("Persisted");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reorder
+// ---------------------------------------------------------------------------
+
+describe("WatchlistSection reorder", () => {
+  it("shows Move up and Move down buttons when items exist", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+
+    expect(screen.getAllByRole("button", { name: "Move up" }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("button", { name: "Move down" }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does NOT show reorder buttons when empty", () => {
+    renderSection("a");
+    expect(screen.queryByRole("button", { name: "Move up" })).not.toBeInTheDocument();
+  });
+
+  it("first item has Move up disabled", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+
+    const upButtons = screen.getAllByRole("button", { name: "Move up" });
+    expect(upButtons[0]).toBeDisabled();
+    expect(upButtons[1]).not.toBeDisabled();
+  });
+
+  it("last item has Move down disabled", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+
+    const downButtons = screen.getAllByRole("button", { name: "Move down" });
+    expect(downButtons[0]).not.toBeDisabled();
+    expect(downButtons[1]).toBeDisabled();
+  });
+
+  it("moving item down changes localStorage order", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+
+    // Click Move down on the first item
+    const downButtons = screen.getAllByRole("button", { name: "Move down" });
+    await h.user.click(downButtons[0]);
+
+    const saved = loadWatchlistData();
+    const aShareItems = saved.items.filter((e) => e.market === "a").sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(aShareItems[0].code).toBe("000000.SZ");
+    expect(aShareItems[1].code).toBe("000000.SH");
+  });
+
+  it("moving item up changes localStorage order", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+
+    // Click Move up on the second item
+    const upButtons = screen.getAllByRole("button", { name: "Move up" });
+    await h.user.click(upButtons[1]);
+
+    const saved = loadWatchlistData();
+    const aShareItems = saved.items.filter((e) => e.market === "a").sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(aShareItems[0].code).toBe("000000.SZ");
+    expect(aShareItems[1].code).toBe("000000.SH");
+  });
+
+  it("reorder does NOT trigger global fetch", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+    fetchSpy.mockClear();
+
+    const downButtons = screen.getAllByRole("button", { name: "Move down" });
+    await h.user.click(downButtons[0]);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("reorder only affects same-market items (US items unchanged)", async () => {
+    const h = renderBoth();
+    await addCodeAt(h.user, "000000.SH", 0);
+    await addCodeAt(h.user, "000000.SZ", 0);
+    await addCodeAt(h.user, "MOCK", 1);
+
+    // Move down the first A-share item
+    const downButtons = screen.getAllByRole("button", { name: "Move down" });
+    await h.user.click(downButtons[0]);
+
+    const saved = loadWatchlistData();
+    const usItem = saved.items.find((e) => e.code === "MOCK");
+    expect(usItem).toBeDefined();
+    // A-share order should be swapped
+    const aShareItems = saved.items.filter((e) => e.market === "a").sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(aShareItems[0].code).toBe("000000.SZ");
+    expect(aShareItems[1].code).toBe("000000.SH");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Delete stability
+// ---------------------------------------------------------------------------
+
+describe("WatchlistSection delete stability", () => {
+  it("remaining items keep order after delete", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+    await addCode(h.user, "000000.SH"); // same code, different entry
+
+    // Remove the middle item
+    const removeBtns = screen.getAllByRole("button", { name: "Remove" });
+    await h.user.click(removeBtns[1]);
+
+    const saved = loadWatchlistData();
+    const aShareItems = saved.items.filter((e) => e.market === "a").sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(aShareItems).toHaveLength(2);
+    // First and last remain in order
+    const codes = aShareItems.map((e) => e.code);
+    expect(codes).toEqual(["000000.SH", "000000.SH"]);
+  });
+
+  it("reorder state survives add after delete", async () => {
+    const h = renderSection("a");
+    await addCode(h.user, "000000.SH");
+    await addCode(h.user, "000000.SZ");
+
+    // Move 000000.SZ to top
+    const upButtons = screen.getAllByRole("button", { name: "Move up" });
+    await h.user.click(upButtons[1]);
+
+    // Delete the top item
+    const removeBtns = screen.getAllByRole("button", { name: "Remove" });
+    await h.user.click(removeBtns[0]);
+
+    // Add new item — should work without error
+    await addCode(h.user, "000000.SH");
+
+    const saved = loadWatchlistData();
+    expect(saved.items.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// US section — local management
+// ---------------------------------------------------------------------------
+
+describe("WatchlistSection US local management", () => {
+  it("US section has Edit notes button", async () => {
+    const h = renderSection("us");
+    await addCode(h.user, "MOCK");
+    expect(screen.getByRole("button", { name: "Edit notes" })).toBeInTheDocument();
+  });
+
+  it("US section can edit notes", async () => {
+    const h = renderSection("us");
+    await addCode(h.user, "MOCK");
+
+    await h.user.click(screen.getByRole("button", { name: "Edit notes" }));
+    const input = screen.getByRole("textbox", { name: "Notes (optional)" });
+    await h.user.clear(input);
+    await h.user.type(input, "US note");
+    await h.user.keyboard("{Enter}");
+
+    expect(screen.getByText("US note")).toBeInTheDocument();
+  });
+
+  it("US section has Move up and Move down buttons", async () => {
+    const h = renderSection("us");
+    await addCode(h.user, "MOCK");
+    await addCode(h.user, "TEST");
+
+    expect(screen.getAllByRole("button", { name: "Move up" }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("button", { name: "Move down" }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("US section can reorder", async () => {
+    const h = renderSection("us");
+    await addCode(h.user, "MOCK");
+    await addCode(h.user, "TEST");
+
+    const downButtons = screen.getAllByRole("button", { name: "Move down" });
+    await h.user.click(downButtons[0]);
+
+    const saved = loadWatchlistData();
+    const usItems = saved.items.filter((e) => e.market === "us").sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(usItems[0].code).toBe("TEST");
+    expect(usItems[1].code).toBe("MOCK");
+  });
+
+  it("US section still has no Load Quotes button", async () => {
+    const h = renderSection("us");
+    await addCode(h.user, "MOCK");
+    expect(screen.queryByRole("button", { name: "Load Quotes" })).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Interleaved reorder (A / US / A / US global order)
+// ---------------------------------------------------------------------------
+
+describe("WatchlistSection interleaved reorder", () => {
+  /** Build interleaved data by adding via both sections in alternating order. */
+  async function buildInterleaved(user: ReturnType<typeof userEvent.setup>) {
+    // A-share first
+    await addCodeAt(user, "000000.SH", 0);
+    // US
+    await addCodeAt(user, "MOCK", 1);
+    // A-share second
+    await addCodeAt(user, "000000.SZ", 0);
+    // US second
+    await addCodeAt(user, "TEST", 1);
+  }
+
+  it("A-share move down works even with US entries interleaved", async () => {
+    const h = renderBoth();
+    await buildInterleaved(h.user);
+
+    // Verify initial data has 4 entries
+    const initial = loadWatchlistData();
+    expect(initial.items).toHaveLength(4);
+
+    // Click Move down on the first A-share row (000000.SH)
+    // In the A-share section, 000000.SH is first, 000000.SZ is second
+    const downButtons = screen.getAllByRole("button", { name: "Move down" });
+    // There are 4 Move down buttons total: 2 in A-share section, 2 in US section
+    // First Move down belongs to the first A-share item (000000.SH)
+    await h.user.click(downButtons[0]);
+
+    // After move down: A-share order should be [000000.SZ, 000000.SH]
+    const saved = loadWatchlistData();
+    const aItems = saved.items
+      .filter((e) => e.market === "a")
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(aItems[0].code).toBe("000000.SZ");
+    expect(aItems[1].code).toBe("000000.SH");
+
+    // US items should still exist and keep relative order
+    const usItems = saved.items
+      .filter((e) => e.market === "us")
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(usItems[0].code).toBe("MOCK");
+    expect(usItems[1].code).toBe("TEST");
+  });
+
+  it("US move works even with A-share entries interleaved", async () => {
+    const h = renderBoth();
+    await buildInterleaved(h.user);
+
+    // Click Move down on the first US row (MOCK)
+    const downButtons = screen.getAllByRole("button", { name: "Move down" });
+    // A-share section has 2 Move down buttons, US section has 2
+    // Index 2 = first US Move down
+    await h.user.click(downButtons[2]);
+
+    const saved = loadWatchlistData();
+    // US order should be [TEST, MOCK]
+    const usItems = saved.items
+      .filter((e) => e.market === "us")
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(usItems[0].code).toBe("TEST");
+    expect(usItems[1].code).toBe("MOCK");
+
+    // A-share items should keep relative order
+    const aItems = saved.items
+      .filter((e) => e.market === "a")
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(aItems[0].code).toBe("000000.SH");
+    expect(aItems[1].code).toBe("000000.SZ");
+  });
+
+  it("interleaved reorder does NOT trigger fetch", async () => {
+    const h = renderBoth();
+    await buildInterleaved(h.user);
+    fetchSpy.mockClear();
+
+    const downButtons = screen.getAllByRole("button", { name: "Move down" });
+    await h.user.click(downButtons[0]);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});

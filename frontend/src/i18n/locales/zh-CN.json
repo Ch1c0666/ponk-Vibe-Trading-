@@ -958,6 +958,9 @@
     "watchlistLoadQuotes": "加载行情",
     "watchlistQuoteLoading": "加载中…",
     "watchlistQuoteNotReviewed": "待审核",
+    "watchlistMoveUp": "上移",
+    "watchlistMoveDown": "下移",
+    "watchlistEditNotes": "编辑备注",
     "watchlistRemove": "删除",
     "watchlistUSNotSupported": "美股行情暂不支持"
   }

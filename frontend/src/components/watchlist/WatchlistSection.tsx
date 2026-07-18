@@ -1,17 +1,24 @@
 // ---------------------------------------------------------------------------
-// WatchlistSection — per-market watchlist UI with add / remove / notes and
-// manual quote loading.  State is owned by the parent; this component filters
-// by market and calls onChange to propagate updates.  Quote state is runtime-
-// only (not persisted); it starts idle and only updates on user request.
+// WatchlistSection — per-market watchlist UI with add / remove / notes editing /
+// reorder and manual quote loading.  State is owned by the parent; this
+// component filters by market and calls onChange to propagate updates.
+// Quote state is runtime-only (not persisted); it starts idle and only
+// updates on user request.
 // ---------------------------------------------------------------------------
 
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, X, Minus, RefreshCw } from "lucide-react";
+import { Plus, X, Minus, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { saveWatchlistData, addWatchlistEntry, removeWatchlistEntry } from "@/lib/watchlist/watchlistStorage";
+import {
+  saveWatchlistData,
+  addWatchlistEntry,
+  removeWatchlistEntry,
+  updateWatchlistNotes,
+  reorderWatchlistEntries,
+} from "@/lib/watchlist/watchlistStorage";
 import { loadWatchlistQuotes } from "@/lib/watchlist/watchlistService";
-import type { WatchlistData, WatchlistQuoteState } from "@/lib/watchlist/watchlistTypes";
+import type { WatchlistData, WatchlistQuoteState, WatchlistEntry } from "@/lib/watchlist/watchlistTypes";
 import { AddCodeDialog } from "./AddCodeDialog";
 
 interface WatchlistSectionProps {
@@ -19,7 +26,7 @@ interface WatchlistSectionProps {
   title: string;
   /** Full watchlist data owned by the parent. */
   data: WatchlistData;
-  /** Called with the updated data after add / remove. */
+  /** Called with the updated data after add / remove / reorder / notes edit. */
   onChange: (data: WatchlistData) => void;
 }
 
@@ -79,35 +86,118 @@ export function WatchlistSection({ market, title, data, onChange }: WatchlistSec
   const [dialogOpen, setDialogOpen] = useState(false);
   const [quoteStates, setQuoteStates] = useState<Record<string, WatchlistQuoteState>>({});
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [draftNotes, setDraftNotes] = useState("");
 
   const marketItems = data.items.filter((entry) => entry.market === market);
   const isEmpty = marketItems.length === 0;
 
+  const persist = useCallback(
+    (updated: WatchlistData) => {
+      saveWatchlistData(updated);
+      onChange(updated);
+    },
+    [onChange],
+  );
+
   const handleAdd = useCallback(
     (code: string, notes?: string) => {
       const { data: updated } = addWatchlistEntry(data, market, code, notes);
-      saveWatchlistData(updated);
-      onChange(updated);
+      persist(updated);
       setDialogOpen(false);
     },
-    [data, market, onChange],
+    [data, market, persist],
   );
 
   const handleRemove = useCallback(
     (id: string) => {
       const updated = removeWatchlistEntry(data, id);
-      saveWatchlistData(updated);
-      onChange(updated);
+      persist(updated);
     },
-    [data, onChange],
+    [data, persist],
   );
+
+  // -- Notes editing ---------------------------------------------------------
+
+  const handleStartEditNotes = useCallback((entry: WatchlistEntry) => {
+    setEditingNotesId(entry.id);
+    setDraftNotes(entry.notes ?? "");
+  }, []);
+
+  const handleSaveNotes = useCallback(() => {
+    if (editingNotesId === null) return;
+    try {
+      const updated = updateWatchlistNotes(data, editingNotesId, draftNotes);
+      persist(updated);
+    } catch {
+      // Notes validation failed — discard edit silently.
+    }
+    setEditingNotesId(null);
+  }, [editingNotesId, draftNotes, data, persist]);
+
+  const handleCancelNotes = useCallback(() => {
+    setEditingNotesId(null);
+  }, []);
+
+  // -- Reorder ---------------------------------------------------------------
+  //
+  // Reorder operates on same-market display order.  We swap two items in the
+  // market-filtered list, then reconstruct the global order by stitching the
+  // reordered same-market items back into their original positions relative to
+  // other-market items.  This guarantees that reorder never touches items from
+  // a different market.
+
+  const handleMove = useCallback(
+    (id: string, direction: "up" | "down") => {
+      // Same-market items in display order.
+      const marketOrder = [...marketItems];
+      const idx = marketOrder.findIndex((e) => e.id === id);
+      if (idx < 0) return;
+
+      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= marketOrder.length) return;
+
+      // Swap within same-market list.
+      [marketOrder[idx], marketOrder[targetIdx]] = [marketOrder[targetIdx], marketOrder[idx]];
+
+      // Reconstruct global order: preserve positions of other-market items,
+      // replace same-market items with the reordered list in sequence.
+      const sorted = [...data.items].sort((a, b) => a.sortOrder - b.sortOrder);
+      const marketIds = new Set(marketOrder.map((e) => e.id));
+
+      let nextMarketIdx = 0;
+      const newGlobalOrder: typeof sorted = [];
+      for (const item of sorted) {
+        if (marketIds.has(item.id)) {
+          newGlobalOrder.push(marketOrder[nextMarketIdx++]);
+        } else {
+          newGlobalOrder.push(item);
+        }
+      }
+
+      const updated = reorderWatchlistEntries(data, newGlobalOrder.map((e) => e.id));
+      persist(updated);
+    },
+    [data, marketItems, persist],
+  );
+
+  const handleMoveUp = useCallback(
+    (id: string) => handleMove(id, "up"),
+    [handleMove],
+  );
+
+  const handleMoveDown = useCallback(
+    (id: string) => handleMove(id, "down"),
+    [handleMove],
+  );
+
+  // -- Quote loading ---------------------------------------------------------
 
   const handleLoadQuotes = useCallback(async () => {
     if (quoteLoading || marketItems.length === 0) return;
 
     setQuoteLoading(true);
 
-    // Set all current items to loading.
     const loading: Record<string, WatchlistQuoteState> = {};
     for (const item of marketItems) {
       loading[item.code] = { kind: "loading" };
@@ -132,7 +222,6 @@ export function WatchlistSection({ market, title, data, onChange }: WatchlistSec
     }
   }, [marketItems, quoteLoading]);
 
-  // Lookup quote state for a code; defaults to idle.
   const getQuote = (code: string): WatchlistQuoteState =>
     quoteStates[code] ?? { kind: "idle" };
 
@@ -142,7 +231,6 @@ export function WatchlistSection({ market, title, data, onChange }: WatchlistSec
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
         <div className="flex items-center gap-2">
-          {/* Load Quotes — A-share only, shown when there are items */}
           {market === "a" && !isEmpty && (
             <button
               type="button"
@@ -205,15 +293,44 @@ export function WatchlistSection({ market, title, data, onChange }: WatchlistSec
             <tbody>
               {marketItems.map((entry) => {
                 const quote = getQuote(entry.code);
+                const isEditing = editingNotesId === entry.id;
                 return (
                   <tr key={entry.id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-3 py-2 font-mono text-foreground/80">
                       {entry.code}
                     </td>
+                    {/* Name / Notes cell — click to edit */}
                     <td className="px-3 py-2 text-muted-foreground/60">
-                      {quote.kind === "loaded" && quote.data.name
-                        ? quote.data.name
-                        : entry.notes || "—"}
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={draftNotes}
+                          onChange={(e) => setDraftNotes(e.target.value)}
+                          onBlur={handleSaveNotes}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveNotes();
+                            if (e.key === "Escape") {
+                              e.preventDefault();
+                              handleCancelNotes();
+                            }
+                          }}
+                          className="w-full rounded border bg-background px-1.5 py-0.5 text-xs outline-none ring-1 ring-ring"
+                          autoFocus
+                          maxLength={500}
+                          aria-label={t("overview.watchlistNotesLabel")}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditNotes(entry)}
+                          aria-label={t("overview.watchlistEditNotes")}
+                          className="text-left hover:underline decoration-dotted underline-offset-2 cursor-pointer"
+                        >
+                          {quote.kind === "loaded" && quote.data.name
+                            ? quote.data.name
+                            : entry.notes || "—"}
+                        </button>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       {renderPriceCell(
@@ -225,15 +342,42 @@ export function WatchlistSection({ market, title, data, onChange }: WatchlistSec
                     </td>
                     <td className="px-3 py-2">{renderChangeCell(quote)}</td>
                     <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(entry.id)}
-                        aria-label={t("overview.watchlistRemove")}
-                        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                        {t("overview.watchlistRemove")}
-                      </button>
+                      <div className="flex items-center gap-0.5">
+                        {/* Move up */}
+                        <button
+                          type="button"
+                          onClick={() => handleMoveUp(entry.id)}
+                          aria-label={t("overview.watchlistMoveUp")}
+                          disabled={
+                            marketItems.indexOf(entry) === 0
+                          }
+                          className="inline-flex items-center rounded px-0.5 py-0.5 text-muted-foreground/40 transition-colors hover:text-foreground disabled:opacity-20"
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </button>
+                        {/* Move down */}
+                        <button
+                          type="button"
+                          onClick={() => handleMoveDown(entry.id)}
+                          aria-label={t("overview.watchlistMoveDown")}
+                          disabled={
+                            marketItems.indexOf(entry) === marketItems.length - 1
+                          }
+                          className="inline-flex items-center rounded px-0.5 py-0.5 text-muted-foreground/40 transition-colors hover:text-foreground disabled:opacity-20"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                        {/* Remove */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(entry.id)}
+                          aria-label={t("overview.watchlistRemove")}
+                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                          {t("overview.watchlistRemove")}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

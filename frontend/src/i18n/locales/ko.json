@@ -958,6 +958,9 @@
     "watchlistLoadQuotes": "시세 로드",
     "watchlistQuoteLoading": "로딩 중…",
     "watchlistQuoteNotReviewed": "검토 대기 중",
+    "watchlistMoveUp": "위로 이동",
+    "watchlistMoveDown": "아래로 이동",
+    "watchlistEditNotes": "메모 편집",
     "watchlistRemove": "삭제",
     "watchlistUSNotSupported": "미국 주식 시세는 아직 사용할 수 없습니다"
   }

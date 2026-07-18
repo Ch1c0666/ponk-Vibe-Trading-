@@ -958,6 +958,9 @@
     "watchlistLoadQuotes": "株価読込",
     "watchlistQuoteLoading": "読込中…",
     "watchlistQuoteNotReviewed": "審査待ち",
+    "watchlistMoveUp": "上へ移動",
+    "watchlistMoveDown": "下へ移動",
+    "watchlistEditNotes": "メモを編集",
     "watchlistRemove": "削除",
     "watchlistUSNotSupported": "米国株の株価はまだ利用できません"
   }

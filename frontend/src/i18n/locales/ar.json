@@ -958,6 +958,9 @@
     "watchlistLoadQuotes": "تحميل الأسعار",
     "watchlistQuoteLoading": "جار التحميل…",
     "watchlistQuoteNotReviewed": "قيد المراجعة",
+    "watchlistMoveUp": "تحريك للأعلى",
+    "watchlistMoveDown": "تحريك للأسفل",
+    "watchlistEditNotes": "تعديل الملاحظات",
     "watchlistRemove": "إزالة",
     "watchlistUSNotSupported": "أسعار الأسهم الأمريكية غير متاحة بعد"
   }

@@ -154,6 +154,61 @@ function TabLayout() {
 }
 
 // ---------------------------------------------------------------------------
+// Helper — renders a family section with item list or status
+function FamilySection({
+  label,
+  family,
+  pendingLabel,
+  renderItem,
+  dataKey,
+}: {
+  label: string;
+  family?: { ok: boolean; data?: unknown; error?: string; error_code?: string };
+  pendingLabel: string;
+  renderItem: (item: Record<string, unknown>) => React.ReactNode;
+  dataKey?: string;
+}) {
+  if (!family) return null;
+
+  if (!family.ok) {
+    return (
+      <div className="text-xs">
+        <span className="font-medium">{label}: </span>
+        <span className="text-amber-600">
+          {family.error_code === "code_not_reviewed" ? pendingLabel : family.error || "—"}
+        </span>
+      </div>
+    );
+  }
+
+  const rawData = family.data;
+  let items: unknown[] = [];
+  if (Array.isArray(rawData)) {
+    items = rawData;
+  } else if (dataKey && rawData && typeof rawData === "object") {
+    const nested = (rawData as Record<string, unknown>)[dataKey];
+    if (Array.isArray(nested)) items = nested;
+  }
+
+  return (
+    <div className="text-xs">
+      <span className="font-medium">{label}</span>
+      {items.length === 0 ? (
+        <span className="text-muted-foreground/50 ml-1">—</span>
+      ) : (
+        <div className="mt-1 space-y-1 text-muted-foreground ml-2 border-l-2 border-muted pl-2">
+          {items.slice(0, 5).map((item, i) => (
+            <div key={i}>{renderItem(item as Record<string, unknown>)}</div>
+          ))}
+          {items.length > 5 && (
+            <div className="text-muted-foreground/40">+{items.length - 5} more</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Segment detail view — shown at /ai-computing/:segmentKey
 // ---------------------------------------------------------------------------
 function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
@@ -288,66 +343,73 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
                 </button>
               </div>
             ) : dataEnv.ok ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {/* News */}
-                <div className="text-xs">
-                  <span className="font-medium">{t("aiComputing.template.reviewedDataNews")}: </span>
-                  {dataEnv.data.news?.ok ? (
-                    <span className="text-muted-foreground">
-                      {Array.isArray(dataEnv.data.news.data) ? dataEnv.data.news.data.length : 0} items
-                      {dataEnv.data.news.source ? ` (${dataEnv.data.news.source})` : ""}
-                    </span>
-                  ) : (
-                    <span className="text-amber-600">
-                      {dataEnv.data.news?.error_code === "code_not_reviewed"
-                        ? t("aiComputing.template.reviewedDataPending")
-                        : dataEnv.data.news?.error || "—"}
-                    </span>
+                <FamilySection
+                  label={t("aiComputing.template.reviewedDataNews")}
+                  family={dataEnv.data.news}
+                  pendingLabel={t("aiComputing.template.reviewedDataPending")}
+                  renderItem={(item: Record<string, unknown>) => (
+                    <div className="text-xs leading-relaxed">
+                      <span className="font-medium">{String(item.title || "—")}</span>
+                      <span className="text-muted-foreground/60 ml-2">
+                        {[item.time, item.source].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
                   )}
-                </div>
+                />
                 {/* Reports */}
-                <div className="text-xs">
-                  <span className="font-medium">{t("aiComputing.template.reviewedDataReports")}: </span>
-                  {dataEnv.data.reports?.ok ? (
-                    <span className="text-muted-foreground">
-                      {dataEnv.data.reports.source || "—"}
-                    </span>
-                  ) : (
-                    <span className="text-amber-600">
-                      {dataEnv.data.reports?.error_code === "code_not_reviewed"
-                        ? t("aiComputing.template.reviewedDataPending")
-                        : dataEnv.data.reports?.error || "—"}
-                    </span>
+                <FamilySection
+                  label={t("aiComputing.template.reviewedDataReports")}
+                  family={dataEnv.data.reports}
+                  pendingLabel={t("aiComputing.template.reviewedDataPending")}
+                  renderItem={(item: Record<string, unknown>) => (
+                    <div className="text-xs leading-relaxed">
+                      <span className="font-medium">{String(item.title || "—")}</span>
+                      <span className="text-muted-foreground/60 ml-2">
+                        {[item.orgSName, item.researcher, item.publishDate, item.emRatingName].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
                   )}
-                </div>
+                  dataKey="reports"
+                />
                 {/* Fundamentals */}
                 <div className="text-xs">
-                  <span className="font-medium">{t("aiComputing.template.reviewedDataFundamentals")}: </span>
+                  <span className="font-medium">{t("aiComputing.template.reviewedDataFundamentals")}</span>
                   {dataEnv.data.fundamentals?.ok ? (
-                    <span className="text-muted-foreground">
+                    <div className="mt-1 space-y-1 text-muted-foreground">
                       {(() => {
                         const d = dataEnv.data.fundamentals.data as Record<string, unknown> | undefined;
-                        if (!d) return "—";
-                        const si = d.stock_info;
+                        if (!d) return <span>—</span>;
+                        const si = d.stock_info as Record<string, unknown> | undefined;
                         const fr = d.financial_reports as Record<string, unknown[]> | undefined;
-                        const parts: string[] = [];
-                        if (si) {
-                          parts.push("info ✓");
-                        } else {
-                          parts.push(t("aiComputing.template.reviewedDataStockInfoUnavailable"));
-                        }
-                        if (fr) {
-                          const lrb = (fr.income_statement || []).length;
-                          const fzb = (fr.balance_sheet || []).length;
-                          const llb = (fr.cash_flow || []).length;
-                          parts.push(`lrb=${lrb} fzb=${fzb} llb=${llb}`);
-                        }
-                        return parts.join(", ") || "—";
+                        return (
+                          <>
+                            {si ? (
+                              <div>{(si.name || si.code || "—") as string}{si.industry ? ` · ${si.industry}` : ""}</div>
+                            ) : (
+                              <div className="text-amber-600">{t("aiComputing.template.reviewedDataStockInfoUnavailable")}</div>
+                            )}
+                            {fr ? (
+                              <div>
+                                {(["income_statement","balance_sheet","cash_flow"] as const).map((k) => {
+                                  const items = fr[k] || [];
+                                  const latest = items[0] as Record<string, unknown> | undefined;
+                                  return (
+                                    <div key={k} className="ml-2">
+                                      {k === "income_statement" ? "Income" : k === "balance_sheet" ? "Balance" : "Cash Flow"}
+                                      : {items.length}期{latest?.report_period ? ` · 最新 ${String(latest.report_period)}` : ""}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </>
+                        );
                       })()}
-                      {dataEnv.data.fundamentals.source ? ` (${dataEnv.data.fundamentals.source})` : ""}
-                    </span>
+                    </div>
                   ) : (
-                    <span className="text-amber-600">
+                    <span className="text-amber-600 ml-1">
                       {dataEnv.data.fundamentals?.error_code === "code_not_reviewed"
                         ? t("aiComputing.template.reviewedDataPending")
                         : dataEnv.data.fundamentals?.error || "—"}
@@ -355,21 +417,19 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
                   )}
                 </div>
                 {/* Announcements */}
-                <div className="text-xs">
-                  <span className="font-medium">{t("aiComputing.template.reviewedDataAnnouncements")}: </span>
-                  {dataEnv.data.announcements?.ok ? (
-                    <span className="text-muted-foreground">
-                      {Array.isArray(dataEnv.data.announcements.data) ? dataEnv.data.announcements.data.length : 0} items
-                      {dataEnv.data.announcements.source ? ` (${dataEnv.data.announcements.source})` : ""}
-                    </span>
-                  ) : (
-                    <span className="text-amber-600">
-                      {dataEnv.data.announcements?.error_code === "code_not_reviewed"
-                        ? t("aiComputing.template.reviewedDataPending")
-                        : dataEnv.data.announcements?.error || "—"}
-                    </span>
+                <FamilySection
+                  label={t("aiComputing.template.reviewedDataAnnouncements")}
+                  family={dataEnv.data.announcements}
+                  pendingLabel={t("aiComputing.template.reviewedDataPending")}
+                  renderItem={(item: Record<string, unknown>) => (
+                    <div className="text-xs leading-relaxed">
+                      <span className="font-medium">{String(item.title || "—")}</span>
+                      <span className="text-muted-foreground/60 ml-2">
+                        {[item.date, item.type].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
                   )}
-                </div>
+                />
                 <p className="text-[11px] text-muted-foreground">
                   {t("aiComputing.template.reviewedDataDisclaimer")}
                 </p>

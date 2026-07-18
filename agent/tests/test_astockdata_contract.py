@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import socket
 import unittest
+import requests
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -700,6 +701,48 @@ class AstockdataOfflineContractTests(unittest.TestCase):
             "000000,gssz000000",
         )
         self.assertEqual(post.call_args.kwargs["data"]["pageSize"], "3")
+
+    # -- news contract --------------------------------------------------------
+
+    def test_eastmoney_stock_news_parses_valid_jsonp(self) -> None:
+        """Valid JSONP response must parse into list of dicts with expected fields."""
+        response = SimpleNamespace(
+            text='jQuery_news({"result":{"cmsArticleWebOld":['
+                 '{"title":"News <b>Title</b>","content":"<p>Body</p> extra",'
+                 '"date":"2026-07-18","mediaName":"Source A","url":"http://x"}]}})',
+        )
+        with patch.object(
+            astockdata_loader, "em_get", return_value=response,
+        ) as get:
+            rows = astockdata_loader.eastmoney_stock_news("000000.SH", page_size=3)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["title"], "News Title")
+        self.assertEqual(rows[0]["content"], "Body extra")
+        self.assertEqual(rows[0]["time"], "2026-07-18")
+        self.assertEqual(rows[0]["source"], "Source A")
+        self.assertEqual(rows[0]["url"], "http://x")
+        get.assert_called_once()
+
+    def test_eastmoney_stock_news_malformed_jsonp_returns_empty(self) -> None:
+        """Malformed JSONP (no parens) must return [] without exception."""
+        response = SimpleNamespace(text="not_jsonp_at_all")
+        with patch.object(
+            astockdata_loader, "em_get", return_value=response,
+        ):
+            rows = astockdata_loader.eastmoney_stock_news("000000.SH")
+        self.assertEqual(rows, [])
+
+    def test_eastmoney_stock_news_http_error_returns_empty(self) -> None:
+        """HTTP error from em_get must return [] without exception."""
+        with patch.object(
+            astockdata_loader, "em_get",
+            side_effect=requests.exceptions.ConnectionError("down"),
+        ):
+            rows = astockdata_loader.eastmoney_stock_news("000000.SH")
+        self.assertEqual(rows, [])
+
+    # -- registry -------------------------------------------------------------
 
     def test_registry_contains_astockdata_in_reviewed_order(self) -> None:
         self.assertIn("astockdata", loader_registry.VALID_SOURCES)

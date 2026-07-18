@@ -244,3 +244,62 @@ def test_reports_tool_unavailable_is_enveloped():
     assert payload["data"]["reports"]["ok"] is False
     assert payload["data"]["reports"]["error_code"] == "provider_request_failed"
     registry.return_value.get.assert_called_once_with("get_research_reports")
+
+
+def test_news_unreviewed_datause_does_not_call_provider():
+    """Without dataUse 'news', the news family must return code_not_reviewed
+    and never call the underlying provider."""
+    fetch_news = Mock(return_value=[{"title": "Mock"}])
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["quote"]),
+    ), patch(
+        "src.api.astockdata_routes._FETCHERS",
+        {"news": fetch_news},
+    ):
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=news")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["news"]["error_code"] == "code_not_reviewed"
+    fetch_news.assert_not_called()
+
+
+def test_news_empty_result_is_ok():
+    """When provider returns an empty list, the news family must still
+    report ok: true with an empty data array (not an error)."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["news"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.eastmoney_stock_news",
+        return_value=[],
+    ) as provider:
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=news")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is False
+    assert payload["data"]["news"]["ok"] is True
+    assert payload["data"]["news"]["data"] == []
+    provider.assert_called_once()
+
+
+def test_news_provider_exception_is_enveloped():
+    """When eastmoney_stock_news throws, the news family must return
+    provider_request_failed."""
+    with patch(
+        "src.api.stock_quote_routes._load_manifest",
+        return_value=_manifest_for(_PLACEHOLDER, ["news"]),
+    ), patch(
+        "backtest.loaders.astockdata_loader.eastmoney_stock_news",
+        side_effect=RuntimeError("connection refused"),
+    ):
+        resp = client.get(f"/api/a-stocks/data?code={_PLACEHOLDER}&include=news")
+
+    payload = resp.json()
+    assert resp.status_code == 200
+    assert payload["partial"] is True
+    assert payload["data"]["news"]["ok"] is False
+    assert payload["data"]["news"]["error_code"] == "provider_request_failed"

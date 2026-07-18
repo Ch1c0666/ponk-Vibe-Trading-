@@ -31,9 +31,13 @@ Comparison with other families:
    - `riskNotes`: optional, empty string is OK
 3. Run the automated test suite to confirm no regressions.
 4. Restart 8899 (requires explicit authorization).
-5. Manual smoke: add the code via watchlist UI (do NOT write to any test file/fixture), click a Load Quotes equivalent for the aggregate route, verify `GET /api/a-stocks/data?code=...&include=news` returns `ok: true` with news data.
-6. If the provider returns `[]`, verify the UI shows empty state, not an error.
-7. Rollback path: edit the manifest entry and change `dataUse` from `["news"]` to `[]` or `["quote"]` — the code immediately returns to code_not_reviewed for news.
+5. API-only manual smoke — no UI, no watchlist interaction:
+   - `GET /api/a-stocks/data?code=<reviewed-news-code>&include=news`
+   - Verify HTTP 200, `data.news.ok: true`, `source: "eastmoney"`, `data` is an array
+   - If `data` is `[]`, verify `ok: true` and `partial: false` (empty is valid, not an error)
+   - If provider is unavailable, verify `ok: false` with `error_code: "provider_request_failed"`
+   - Do NOT enter the code into the watchlist UI, watchlist localStorage, or any frontend page
+6. Rollback path: edit the manifest entry and change `dataUse` from `["news"]` to `[]` or `["quote"]` — the code immediately returns to code_not_reviewed for news.
 
 ## Manifest rules
 
@@ -42,13 +46,13 @@ Comparison with other families:
 - Do not write the new code into any test file, fixture, component, or config outside the manifest.
 - The code must not appear in segmentCodeMap.
 
-## UI behavior when dataUse "news" is open
+## UI status
 
-- Provider returns non-empty list: render titles, times, sources.
-- Provider returns `[]`: render "No news" empty state, not an error.
-- Provider throws / HTTP error: render "News unavailable" with retry option.
-- Code not in manifest for news: render "Pending review" (code_not_reviewed).
-- Do NOT auto-fetch news on page load. Only fetch on explicit user action.
+- There is currently NO news UI in the frontend.
+- This review does NOT authorize building a news UI.
+- The API endpoint (`GET /api/a-stocks/data?include=news`) is the only delivery mechanism.
+- If a news UI is desired in the future, it requires a separate design review covering: component placement, auto-fetch policy, empty-state design, error-state design, and i18n.
+- Until then, news data is only accessible via manual API smoke.
 
 ## Safety boundaries (unchanged)
 

@@ -161,13 +161,16 @@ function FamilySection({
   pendingLabel,
   renderItem,
   dataKey,
+  defaultExpanded = 5,
 }: {
   label: string;
   family?: { ok: boolean; data?: unknown; error?: string; error_code?: string };
   pendingLabel: string;
   renderItem: (item: Record<string, unknown>) => React.ReactNode;
   dataKey?: string;
+  defaultExpanded?: number;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (!family) return null;
 
   if (!family.ok) {
@@ -190,20 +193,87 @@ function FamilySection({
     if (Array.isArray(nested)) items = nested;
   }
 
+  const shown = expanded ? items : items.slice(0, defaultExpanded);
+
   return (
     <div className="text-xs">
-      <span className="font-medium">{label}</span>
+      <span className="font-medium">{label} ({items.length})</span>
       {items.length === 0 ? (
         <span className="text-muted-foreground/50 ml-1">—</span>
       ) : (
-        <div className="mt-1 space-y-1 text-muted-foreground ml-2 border-l-2 border-muted pl-2">
-          {items.slice(0, 5).map((item, i) => (
+        <div className="mt-1 space-y-1.5 text-muted-foreground ml-2 border-l-2 border-muted pl-2">
+          {shown.map((item, i) => (
             <div key={i}>{renderItem(item as Record<string, unknown>)}</div>
           ))}
-          {items.length > 5 && (
-            <div className="text-muted-foreground/40">+{items.length - 5} more</div>
+          {items.length > defaultExpanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground"
+            >
+              {expanded ? "▲ collapse" : `▼ +${items.length - defaultExpanded} more`}
+            </button>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Helper — renders a financial statement table
+function FinancialTable({
+  title,
+  items,
+}: {
+  title: string;
+  items: Record<string, unknown>[];
+}) {
+  if (items.length === 0) return null;
+
+  // Collect all field keys from all periods, keeping report_period first
+  const keySet = new Set<string>();
+  for (const item of items) Object.keys(item).forEach((k) => keySet.add(k));
+  const fields = ["report_period", ...Array.from(keySet).filter((k) => k !== "report_period")];
+  // Limit displayed fields; show first 8 + toggle
+  const [showAll, setShowAll] = useState(false);
+  const visibleFields = showAll ? fields : fields.slice(0, 8);
+
+  return (
+    <div className="text-xs">
+      <div className="font-medium text-muted-foreground mb-1">{title} ({items.length})</div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[11px]">
+          <thead>
+            <tr className="border-b">
+              {visibleFields.map((f) => (
+                <th key={f} className="text-left px-1 py-0.5 font-medium text-muted-foreground/70 whitespace-nowrap">
+                  {f}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {items.slice(0, 5).map((row, i) => (
+              <tr key={i} className="border-b border-muted/30">
+                {visibleFields.map((f) => (
+                  <td key={f} className="px-1 py-0.5 whitespace-nowrap">{String(row[f] ?? "—")}</td>
+                ))}
+              </tr>
+            ))}
+            {items.length > 5 && (
+              <tr><td colSpan={visibleFields.length} className="text-muted-foreground/40 px-1 py-0.5">+{items.length - 5} more periods</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {fields.length > 8 && (
+        <button
+          type="button"
+          onClick={() => setShowAll(!showAll)}
+          className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground mt-1"
+        >
+          {showAll ? "▲ fewer fields" : `▼ ${fields.length - 8} more fields`}
+        </button>
       )}
     </div>
   );
@@ -382,7 +452,7 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
                 <div className="text-xs">
                   <span className="font-medium">{t("aiComputing.template.reviewedDataFundamentals")}</span>
                   {dataEnv.data.fundamentals?.ok ? (
-                    <div className="mt-1 space-y-1 text-muted-foreground">
+                    <div className="mt-1 space-y-2 text-muted-foreground">
                       {(() => {
                         const d = dataEnv.data.fundamentals.data as Record<string, unknown> | undefined;
                         if (!d) return <span>—</span>;
@@ -391,22 +461,15 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
                         return (
                           <>
                             {si ? (
-                              <div>{(si.name || si.code || "—") as string}{si.industry ? ` · ${si.industry}` : ""}</div>
+                              <div className="text-[11px]">{(si.name || si.code || "—") as string}{si.industry ? ` · ${si.industry}` : ""}{si.mcap ? ` · mcap ${(si.mcap as number).toLocaleString()}` : ""}</div>
                             ) : (
-                              <div className="text-amber-600">{t("aiComputing.template.reviewedDataStockInfoUnavailable")}</div>
+                              <div className="text-amber-600 text-[11px]">{t("aiComputing.template.reviewedDataStockInfoUnavailable")}</div>
                             )}
                             {fr ? (
-                              <div>
-                                {(["income_statement","balance_sheet","cash_flow"] as const).map((k) => {
-                                  const items = fr[k] || [];
-                                  const latest = items[0] as Record<string, unknown> | undefined;
-                                  return (
-                                    <div key={k} className="ml-2">
-                                      {k === "income_statement" ? "Income" : k === "balance_sheet" ? "Balance" : "Cash Flow"}
-                                      : {items.length}期{latest?.report_period ? ` · 最新 ${String(latest.report_period)}` : ""}
-                                    </div>
-                                  );
-                                })}
+                              <div className="space-y-3">
+                                <FinancialTable title="Income Statement" items={(fr.income_statement || []) as Record<string, unknown>[]} />
+                                <FinancialTable title="Balance Sheet" items={(fr.balance_sheet || []) as Record<string, unknown>[]} />
+                                <FinancialTable title="Cash Flow" items={(fr.cash_flow || []) as Record<string, unknown>[]} />
                               </div>
                             ) : null}
                           </>
@@ -438,6 +501,13 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
                 <p className="text-[11px] text-muted-foreground">
                   {t("aiComputing.template.reviewedDataDisclaimer")}
                 </p>
+                {/* Collapsible debug JSON — closed by default */}
+                <details className="text-[10px] text-muted-foreground/30">
+                  <summary className="cursor-pointer hover:text-muted-foreground/50">Debug JSON (read-only)</summary>
+                  <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all bg-muted/20 p-2 rounded text-[10px]">
+                    {JSON.stringify(dataEnv, null, 2)}
+                  </pre>
+                </details>
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">{dataEnv.error || "Failed to load"}</p>

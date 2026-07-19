@@ -355,4 +355,36 @@ describe("AIComputingPower page", () => {
     expect(url).not.toContain("/api/stocks/quote");
     fetchSpy.mockRestore();
   });
+
+  it("data panel does NOT render raw long content fields in DOM", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const longText = "LONG_CONTENT_".repeat(50); // 650 chars
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true, source: "a-stock-data", code: "000000.SH", partial: false,
+        data: {
+          news: { ok: true, data: [{ title: "News", content: longText }] },
+          fundamentals: { ok: true, data: { stock_info: null, financial_reports: { income_statement: [{ report_period: "2026-03-31", "净利润": "100" }], balance_sheet: [], cash_flow: [] } } },
+          reports: { ok: true, data: { reports: [{ title: "Report", body: longText }] } },
+          announcements: { ok: true, data: [{ title: "Ann", content: longText }] },
+        },
+      }),
+    });
+
+    renderAt("/ai-computing/computeChip");
+    await act(() => screen.getByRole("button", { name: "Load Data" }).click());
+
+    // Structured fields (title, date, financial data) should appear
+    expect(screen.getByText("News")).toBeInTheDocument();
+    expect(screen.getByText("Report")).toBeInTheDocument();
+    expect(screen.getByText("Ann")).toBeInTheDocument();
+    expect(screen.getByText("净利润")).toBeInTheDocument();
+
+    // Long content must NOT be in the DOM
+    expect(document.body.textContent).not.toContain("LONG_CONTENT_");
+    expect(document.body.textContent).not.toContain(longText);
+
+    fetchSpy.mockRestore();
+  });
 });

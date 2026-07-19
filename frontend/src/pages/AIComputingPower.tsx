@@ -501,13 +501,6 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
                 <p className="text-[11px] text-muted-foreground">
                   {t("aiComputing.template.reviewedDataDisclaimer")}
                 </p>
-                {/* Collapsible debug JSON — closed by default */}
-                <details className="text-[10px] text-muted-foreground/30">
-                  <summary className="cursor-pointer hover:text-muted-foreground/50">Debug JSON (read-only)</summary>
-                  <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all bg-muted/20 p-2 rounded text-[10px]">
-                    {JSON.stringify(dataEnv, null, 2)}
-                  </pre>
-                </details>
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">{dataEnv.error || "Failed to load"}</p>

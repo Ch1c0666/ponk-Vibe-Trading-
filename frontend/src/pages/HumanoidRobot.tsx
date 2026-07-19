@@ -22,6 +22,7 @@ import {
   SupplyChainStructure,
   type ChainTier,
 } from "@/components/common/SupplyChainStructure";
+import { ReviewedAStockDataPanel } from "@/components/common/ReviewedAStockDataPanel";
 import { ReportLibrary, type ReportLibraryView } from "@/components/common/ReportLibrary";
 import { loadReportLibrary } from "@/lib/aiComputing/reportLibraryService";
 import { toReportLibraryView } from "@/lib/aiComputing/reportLibraryAdapter";
@@ -255,6 +256,7 @@ function SegmentDetailView({ segment }: { segment: SegmentMeta }) {
           </div>
         </section>
 
+        <ReviewedAStockDataPanel scope="humanoidRobot" segmentKey={segment.key} />
         <SegmentResearchTemplate segment={segment} />
       </div>
     </div>

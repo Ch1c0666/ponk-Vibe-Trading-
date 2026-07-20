@@ -593,6 +593,44 @@ def _code_to_secid(code: str) -> Optional[str]:
     return f"0.{code}"
 
 
+def eastmoney_stock_profile(code: str) -> Optional[Dict[str, Any]]:
+    """Fallback stock profile via Eastmoney datacenter API.
+
+    Uses ``datacenter-web.eastmoney.com`` (different domain from push2,
+    not blocked by system proxy).  Returns at minimum code/name/industry.
+    Fail-closed: returns None on any error.
+    """
+    bare = code.upper().replace(".SH", "").replace(".SZ", "").replace(".BJ", "")
+    try:
+        url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+        params = {
+            "reportName": "RPT_LICO_FN_CPD",
+            "columns": "SECURITY_CODE,SECURITY_NAME_ABBR,BOARD_NAME",
+            "filter": f'(SECURITY_CODE="{bare}")',
+            "pageSize": "1",
+        }
+        r = requests.get(url, params=params, headers={"User-Agent": UA}, timeout=10)
+        r.raise_for_status()
+        rows = r.json().get("result", {}).get("data") or []
+        if rows:
+            row = rows[0]
+            return {
+                "code": bare,
+                "name": row.get("SECURITY_NAME_ABBR", ""),
+                "industry": row.get("BOARD_NAME", ""),
+                "total_shares": None,
+                "float_shares": None,
+                "mcap": None,
+                "float_mcap": None,
+                "list_date": None,
+                "price": None,
+                "source": "eastmoney-datacenter",
+            }
+    except Exception as exc:
+        logger.warning("eastmoney_stock_profile for %s: %s", code, exc)
+    return None
+
+
 def eastmoney_stock_info(code: str) -> Optional[Dict[str, Any]]:
     """Eastmoney basic stock info: industry, shares, market cap, listing date."""
     secid = _code_to_secid(code)
@@ -654,7 +692,8 @@ def eastmoney_stock_info(code: str) -> Optional[Dict[str, Any]]:
     except Exception as exc:
         logger.warning("eastmoney_stock_info fallback for %s: %s", code, exc)
 
-    return None
+    # Second fallback: Eastmoney datacenter profile.
+    return eastmoney_stock_profile(code)
 
 
 def sina_financial_report(

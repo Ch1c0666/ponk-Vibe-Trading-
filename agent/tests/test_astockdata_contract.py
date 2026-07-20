@@ -827,8 +827,52 @@ class AstockdataOfflineContractTests(unittest.TestCase):
             astockdata_loader, "em_get", side_effect=Exception("proxy down"),
         ):
             info = astockdata_loader.eastmoney_stock_info("000000.SH")
-        # Fallback tried but socket guard blocks real network → returns None safely
         self.assertIsNone(info)
+
+    def test_eastmoney_stock_profile_returns_name_industry(self) -> None:
+        """eastmoney_stock_profile must call datacenter API and return
+        code/name/industry/board on success."""
+        dc_response = SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "result": {
+                    "data": [
+                        {"SECURITY_CODE": "000000", "SECURITY_NAME_ABBR": "DC Corp", "BOARD_NAME": "主板"},
+                    ],
+                },
+            },
+        )
+        with patch.object(astockdata_loader.requests, "get", return_value=dc_response) as get:
+            info = astockdata_loader.eastmoney_stock_profile("000000.SH")
+
+        self.assertIsNotNone(info)
+        self.assertEqual(info["name"], "DC Corp")
+        self.assertEqual(info["industry"], "主板")
+        self.assertEqual(info["source"], "eastmoney-datacenter")
+        self.assertIn("datacenter-web.eastmoney.com", get.call_args[0][0])
+
+    def test_eastmoney_stock_profile_failure_returns_none(self) -> None:
+        """eastmoney_stock_profile must return None on HTTP error."""
+        with patch.object(
+            astockdata_loader.requests, "get",
+            side_effect=requests.exceptions.ConnectionError("down"),
+        ):
+            info = astockdata_loader.eastmoney_stock_profile("000000.SH")
+        self.assertIsNone(info)
+
+    def test_eastmoney_stock_info_datacenter_fallback(self) -> None:
+        """When push2 + urllib both fail, eastmoney_stock_info must fall back
+        to eastmoney_stock_profile and return name/industry."""
+        with patch.object(astockdata_loader, "em_get", side_effect=Exception("push2 down")):
+            with patch.object(
+                astockdata_loader, "eastmoney_stock_profile",
+                return_value={"code": "000000", "name": "DC Corp", "industry": "主板", "source": "eastmoney-datacenter"},
+            ) as profile:
+                info = astockdata_loader.eastmoney_stock_info("000000.SH")
+
+        self.assertIsNotNone(info)
+        self.assertEqual(info["name"], "DC Corp")
+        profile.assert_called_once_with("000000.SH")
 
     def test_eastmoney_stock_info_http_error_returns_none(self) -> None:
         """HTTP error from em_get must return None without exception."""
